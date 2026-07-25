@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kemi-Claw Dashboard</title>
+</head>
+<body>
+  <h1>Kemi-Claw — لوحة التحكم</h1>
+
+  <h2>تسجيل الدخول</h2>
+  <form id="loginForm">
+    <input id="u" placeholder="username" />
+    <input id="p" type="password" placeholder="password" />
+    <button type="submit">login</button>
+  </form>
+
+  <h2>إطلاق دفعة أهداف</h2>
+  <form id="batchForm">
+    <input id="goal" placeholder="goal" />
+    <textarea id="targets" placeholder="one target per line"></textarea>
+    <button type="submit">launch</button>
+  </form>
+  <pre id="out"></pre>
+
+  <script>
+    document.getElementById('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const r = await fetch('/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: document.getElementById('u').value,
+          password: document.getElementById('p').value
+        })
+      });
+      const data = await r.json();
+      if (data.access_token) localStorage.setItem('kemi_token', data.access_token);
+      document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+    };
+
+    document.getElementById('batchForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const goal = document.getElementById('goal').value;
+      const targets = document.getElementById('targets')
+                       .value.split('\n').filter(Boolean);
+      const r = await fetch('/api/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (localStorage.getItem('kemi_token') || '')
+        },
+        body: JSON.stringify({goal, targets})
+      });
+      document.getElementById('out').textContent =
+        JSON.stringify(await r.json(), null, 2);
+    };
+  </script>
+</body>
+</html>

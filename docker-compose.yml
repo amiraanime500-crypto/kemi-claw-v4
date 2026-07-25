@@ -1,0 +1,40 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    command: uvicorn kemi_claw.server:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - redis
+
+  dashboard:
+    build: .
+    command: uvicorn kemi_claw.web.dashboard:app --host 0.0.0.0 --port 8080
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    command: celery -A kemi_claw.queue.celery_app worker --loglevel=info -c 4
+    env_file: .env
+    depends_on:
+      - redis
+
+  flower:
+    build: .
+    command: celery -A kemi_claw.queue.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis

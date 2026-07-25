@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+httpx
+pydantic
+celery
+redis
+jinja2
+pyjwt
+passlib[bcrypt]
+python-multipart

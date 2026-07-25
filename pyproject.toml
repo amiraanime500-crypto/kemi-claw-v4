@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kemi-claw"
+version = "4.0.0"
+description = "Kemi-Claw — authorized offensive-security AI agent (planner, persistent memory, MCP tools, queue, RBAC dashboard)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pydantic",
+    "celery",
+    "redis",
+    "jinja2",
+    "pyjwt",
+    "passlib[bcrypt]",
+    "python-multipart",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[project.scripts]
+kemi-claw = "kemi_claw.client:cli"
+
+[tool.setuptools.packages.find]
+include = ["kemi_claw*"]
+
+[tool.pytest.ini_options]
+testpaths = ["kemi_claw/tests"]
