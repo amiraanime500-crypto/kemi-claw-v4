@@ -22,6 +22,8 @@ import kemi_claw.tools.api_security
 import kemi_claw.tools.reporter
 import kemi_claw.tools.env_control
 from ..integrations.threat_intel import shodan_host, virustotal_domain
+from ..utils.cli import print_scan_header, print_scan_result, print_finding
+from ..utils.cache import cache_get, cache_set
 from ..core.proxy_manager import respect_delay
 from ..dashboard.live import start_scan as dash_start, update_step as dash_step, complete_scan as dash_done
 from ..integrations.notifier import ws_broadcast, notify_finding
