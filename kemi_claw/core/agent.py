@@ -17,6 +17,9 @@ import kemi_claw.tools.tech_detect
 import kemi_claw.tools.waf_detector
 import kemi_claw.tools.sensitive_scanner
 import kemi_claw.tools.dns_enum
+import kemi_claw.tools.injection_scanner
+import kemi_claw.tools.api_security
+import kemi_claw.tools.reporter
 import kemi_claw.tools.env_control
 from ..integrations.threat_intel import shodan_host, virustotal_domain
 from ..core.proxy_manager import respect_delay
