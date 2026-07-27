@@ -5,3 +5,7 @@ __pycache__/
 data/
 .pytest_cache/
 *.egg-info/
+# API keys and secrets
+*.db
+__pycache__/
+*.pyc
