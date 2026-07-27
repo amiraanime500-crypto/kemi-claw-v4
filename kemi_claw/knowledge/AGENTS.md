@@ -8,3 +8,7 @@ example.com, httpbin.org, localhost, any user-authorized target.
 
 ## Capabilities
 31 tools, 6 providers, 13 features.
+
+## Operational Environment
+Active pentest lab at pentest-lab/ with ShadowStrike framework.
+Authorized targets: example.com, httpbin.org, any scope.txt target.
