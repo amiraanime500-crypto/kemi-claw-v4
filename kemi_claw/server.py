@@ -27,7 +27,7 @@ async def health():
     cfg = get_current()
     return {"status": "ok", "agent": "Kemi-Claw", "version": "6.1",
             "tools_count": len(registry.manifest()),
-            "features": ["web_search","browser","sandbox","scheduler","threat_intel","auth_scanner","nvd_correlator","proxy_manager","live_dashboard","multi_model"]}
+            "features": ["web_search","browser","sandbox","scheduler","threat_intel","auth_scanner","nvd_correlator","proxy_manager","live_dashboard","multi_model","dir_bruteforce","tech_detect","waf_detect","sensitive_scan","dns_enum","integrations"]}
 
 @app.post("/run")
 async def run(req: RunRequest):
