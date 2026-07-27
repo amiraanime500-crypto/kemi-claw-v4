@@ -6,3 +6,12 @@
 - Scan: example.com | 95% | 2026-07-27T22:34:02
 - Scan: httpbin.org | 100% | 2026-07-27T22:34:02
 - Scan: google.com | 66% | 2026-07-27T22:34:02
+- Scan: tell me about the system: what OS, how much disk s | 100% | 2026-07-27T23:03:00
+- Scan: search for latest AI news in 2025 or 2026 | 40% | 2026-07-27T23:03:07
+- Scan: create a file called /tmp/kemi_general_test.md wit | 100% | 2026-07-27T23:03:09
+- Scan: install the python package 'emoji' using pip | 100% | 2026-07-27T23:03:20
+- Scan: what is the operating system and how many CPU core | 75% | 2026-07-27T23:05:09
+- Scan: search the web for latest python version | 50% | 2026-07-27T23:05:25
+- Scan: create a file at /tmp/kemi_test.txt with content ' | 100% | 2026-07-27T23:05:28
+- Scan: install the python package named emoji | 100% | 2026-07-27T23:05:34
+- Scan: download https://httpbin.org/json and save to /tmp | 100% | 2026-07-27T23:05:40

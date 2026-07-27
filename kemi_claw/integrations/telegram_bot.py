@@ -59,7 +59,7 @@ async def handle_message(cid, text, uname=""):
     tl = text.lower()
 
     if tl == "/start" or tl in ["hi","hello"]:
-        w = "*Kemi v6.1 — Full Security Suite*\n\nWeb Search | Browser | Sandbox | Shodan/VT | NVD | Auth Scan | Scheduler | Dashboard\n\nCommands: /shodan /vt /nvd /schedule /jobs /model /dashboard /status /auth"
+        w = "*Kemi v6.1 — AI Agent + Security Suite*\n\n🤖 /agent <task> — General AI agent (download, browse, API, files)\n🔒 /scan /shodan /vt /nvd — Security tools\n📊 /dashboard /schedule /jobs /status\n\nTry: `/agent search for latest python news`"
         await send_message(cid, w); return
 
     if tl.startswith("/shodan"):
@@ -115,6 +115,31 @@ async def handle_message(cid, text, uname=""):
         scans = memory.recall_scans(str(cid), 5)
         if scans: await send_message(cid, "*Last 5 Scans:*\n" + "\n".join(f"`{s['target']}` — {s.get('rate',0):.0f}%" for s in scans))
         else: await send_message(cid, "No scans yet"); return
+
+    if tl.startswith("/agent") or tl.startswith("/do"):
+        goal = text.split(" ", 1)[1] if " " in text else text
+        if not goal or goal in ["/agent", "/do"]:
+            await send_message(cid, "Usage: `/agent <task>`\nExamples:\n• `/agent download python 3.13`\n• `/agent search for latest news about AI`\n• `/agent create a file called test.txt with hello world`\n• `/agent install the package requests`")
+            return
+        await send_message(cid, f"🤖 *General Agent — Working...*\n`{goal[:100]}`")
+        from kemi_claw.core.general_agent import GeneralAgent
+        agent = GeneralAgent(provider="nvidia", model=os.getenv("KEMI_MODEL_NAME", "meta/llama-3.1-8b-instruct"))
+        try:
+            result = await agent.run(goal, str(cid))
+            done = result.get("successful", 0)
+            total = result.get("steps_executed", 0)
+            elapsed = result.get("elapsed_seconds", 0)
+            summary = f"🤖 *Done!* {done}/{total} steps succeeded in {elapsed}s"
+            for r in result.get("results", [])[:8]:
+                s = r.get("step", {})
+                ok = "✅" if r.get("success") else "❌"
+                summary += f"\n{ok} {s.get('action', '?')[:80]}"
+            if len(result.get("results", [])) > 8:
+                summary += f"\n... and {len(result['results']) - 8} more"
+            await send_message(cid, summary)
+        except Exception as e:
+            await send_message(cid, f"❌ Agent error: {str(e)[:200]}")
+        return
 
     if tl.startswith("/model"):
         p = text.split()
