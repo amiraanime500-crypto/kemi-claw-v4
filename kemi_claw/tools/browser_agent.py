@@ -26,7 +26,9 @@ async def browser_probe(url: str, actions: str = "screenshot"):
         await browser.close()
         return result
     except Exception as e:
-        if browser: try: await browser.close(); except: pass
+        if browser:
+            try: await browser.close()
+            except: pass
         return {"error": str(e), "url": url}
 
 async def browser_xss_test(url: str, payload: str = "<script>alert(1)</script>"):
@@ -44,7 +46,9 @@ async def browser_xss_test(url: str, payload: str = "<script>alert(1)</script>")
         await browser.close()
         return {"url": url, "payload": payload, "reflected_in_html": reflected}
     except Exception as e:
-        if browser: try: await browser.close(); except: pass
+        if browser:
+            try: await browser.close()
+            except: pass
         return {"error": str(e)}
 
 registry.register("browser_probe", "Open URL in real browser, extract data and forms", {"url": "str", "actions": "str"}, browser_probe)

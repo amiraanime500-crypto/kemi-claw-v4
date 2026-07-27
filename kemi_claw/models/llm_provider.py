@@ -12,8 +12,8 @@ class LLMProvider:
     async def complete(self, system: str, messages: list) -> str:
         if self.provider == "claude":
             return await self._anthropic(system, messages)
-        if self.provider == "openai":
-            return await self._openai(system, messages)
+        if self.provider == "openai" or self.provider == "nvidia":
+            return await self._openai_compat(system, messages)
         if self.provider == "deepseek":
             return await self._deepseek(system, messages)
         if self.provider == "local":
@@ -38,11 +38,15 @@ class LLMProvider:
             r.raise_for_status()
             return r.json()["content"][0]["text"]
 
-    async def _openai(self, system, messages):
+    async def _openai_compat(self, system, messages):
+        from ..models.multi_model import get_provider_config
+        cfg = get_provider_config(self.provider)
+        base_url = cfg.get("base_url", "https://api.openai.com/v1")
+        api_key = cfg.get("api_key") or settings.openai_api_key
         async with httpx.AsyncClient(timeout=600) as c:
             r = await c.post(
-                "https://integrate.api.nvidia.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": self.model,
                     "messages": [{"role": "system", "content": system}, *messages],

@@ -1,9 +1,14 @@
 """Real-time web search for CVEs, vulnerabilities, and security research."""
 from .mcp_registry import registry
 
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS
+
+
 async def web_search(query: str, max_results: int = 5):
     try:
-        from duckduckgo_search import DDGS
         results = []
         with DDGS() as ddgs:
             for r in ddgs.text(f"{query} security vulnerability CVE", max_results=max_results):
@@ -12,9 +17,9 @@ async def web_search(query: str, max_results: int = 5):
     except Exception as e:
         return {"error": str(e), "query": query}
 
+
 async def cve_search(cve_id: str):
     try:
-        from duckduckgo_search import DDGS
         results = []
         with DDGS() as ddgs:
             for r in ddgs.text(f"{cve_id} CVE details exploit", max_results=5):
@@ -23,9 +28,9 @@ async def cve_search(cve_id: str):
     except Exception as e:
         return {"error": str(e), "cve": cve_id}
 
+
 async def tech_search(tech: str):
     try:
-        from duckduckgo_search import DDGS
         results = []
         with DDGS() as ddgs:
             for r in ddgs.text(f"{tech} latest vulnerabilities 2025 2026 security", max_results=5):
@@ -34,6 +39,7 @@ async def tech_search(tech: str):
     except Exception as e:
         return {"error": str(e), "technology": tech}
 
-registry.register("web_search", "Search the web for security info", {"query": "str", "max_results": "int"}, web_search)
+
+registry.register("web_search", "Search the web for security info (CVEs, vulns, docs)", {"query": "str", "max_results": "int"}, web_search)
 registry.register("cve_search", "Search for specific CVE details", {"cve_id": "str"}, cve_search)
 registry.register("tech_search", "Search latest vulnerabilities for a technology", {"tech": "str"}, tech_search)

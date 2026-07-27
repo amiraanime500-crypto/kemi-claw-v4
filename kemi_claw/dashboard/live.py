@@ -1,11 +1,11 @@
 """Live real-time dashboard — WebSocket-powered monitoring."""
 import asyncio, json, os, time
-from datetime import datetime
+from datetime import datetime, timezone
 
 _active_scans = {}; _subscribers = []; _scan_history = []
 
 async def _broadcast(event, data):
-    msg = json.dumps({"event": event, "data": data, "ts": datetime.utcnow().isoformat()})
+    msg = json.dumps({"event": event, "data": data, "ts": datetime.now(timezone.utc).isoformat()})
     dead = [ws for ws in _subscribers if not await _try_send(ws, msg)]
     for d in dead: _subscribers.remove(d)
 

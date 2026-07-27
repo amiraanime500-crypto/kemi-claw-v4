@@ -4,7 +4,10 @@ PROVIDERS = {"nvidia":{"name":"NVIDIA NIM","base_url":"https://integrate.api.nvi
 _current_provider=os.getenv("KEMI_MODEL_PROVIDER","nvidia")
 _current_model=os.getenv("KEMI_MODEL_NAME","meta/llama-3.1-8b-instruct")
 def get_provider_config(p=None):
-    c=PROVIDERS.get(p or _current_provider,PROVIDERS['nvidia']).copy();c['key']=_current_provider;return c
+    c=PROVIDERS.get(p or _current_provider,PROVIDERS['nvidia']).copy();c['key']=_current_provider
+    k = c.get('env_key')
+    c['api_key'] = os.getenv(k, os.getenv('OPENAI_API_KEY','')) if k else os.getenv('OPENAI_API_KEY','')
+    return c
 def get_api_key(p=None):
     cfg=PROVIDERS.get(p or _current_provider,PROVIDERS['nvidia']);k=cfg.get('env_key');return os.getenv(k,os.getenv('OPENAI_API_KEY','')) if k else os.getenv('OPENAI_API_KEY','')
 def switch_model(provider,model=None):

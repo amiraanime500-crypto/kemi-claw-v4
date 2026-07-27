@@ -1,0 +1,2 @@
+- Scan: example.com | 94% | 2026-07-27T22:08:35
+- Scan: httpbin.org | 100% | 2026-07-27T22:08:35

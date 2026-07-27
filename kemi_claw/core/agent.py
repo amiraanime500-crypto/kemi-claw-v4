@@ -12,6 +12,7 @@ import kemi_claw.tools.browser_agent
 import kemi_claw.tools.sandbox_exec
 import kemi_claw.tools.auth_scanner
 import kemi_claw.tools.nvd_correlator
+import kemi_claw.tools.env_control
 from ..integrations.threat_intel import shodan_host, virustotal_domain
 from ..core.proxy_manager import respect_delay
 from ..dashboard.live import start_scan as dash_start, update_step as dash_step, complete_scan as dash_done
