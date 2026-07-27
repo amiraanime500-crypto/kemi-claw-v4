@@ -1,5 +1,5 @@
 """Vulnerability scanners: SQLi, XSS, Open Redirect, SSRF, Path Traversal, CORS."""
-import asyncio, re, urlib.parse
+import asyncio, re, urllib.parse
 from .mcp_registry import registry
 
 async def _probe(url, method="GET", params=None, headers_extra=None, timeout=15):
@@ -18,9 +18,9 @@ async def _probe(url, method="GET", params=None, headers_extra=None, timeout=15)
 async def sqli_check(url: str):
     payloads = [("'", "single quote"), ('"', "double quote"), ("' OR '1'='1", "OR injection"), ("' OR 1=1--", "OR comment"), ("1' AND SLEEP(3)--", "time-based MySQL"), ("1; WAITFOR DELAY '0:0:3'--", "time-based MSSQL"), ("1' AND 1=CAST(version() AS INT)--", "type conversion")]
     findings = []
-    parsed = urlib.parse.urlparse(url)
+    parsed = urllib.parse.urlparse(url)
     base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-    params = dict(urlib.parse.parse_qsl(parsed.query)) if parsed.query else {"q": "test"}
+    params = dict(urllib.parse.parse_qsl(parsed.query)) if parsed.query else {"q": "test"}
     for payload, desc in payloads:
         test_params = {k: f"{v}{payload}" for k, v in params.items()}
         result = await _probe(base_url, params=test_params)
@@ -35,9 +35,9 @@ async def sqli_check(url: str):
 async def xss_check(url: str):
     payloads = [("<script>alert(1)</script>", "basic"), ('"><script>alert(1)</script>', "attribute"), ("<img src=x onerror=alert(1)>", "img onerror"), ("'-alert(1)-'", "sq js"), ('"-alert(1)-"', "dq js"), ("<svg/onload=alert(1)>", "svg")]
     findings = []
-    parsed = urlib.parse.urlparse(url)
+    parsed = urllib.parse.urlparse(url)
     base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-    params = dict(urlib.parse.parse_qsl(parsed.query)) if parsed.query else {"q": "test"}
+    params = dict(urllib.parse.parse_qsl(parsed.query)) if parsed.query else {"q": "test"}
     for payload, desc in payloads:
         test_params = {k: f"{v}{payload}" for k, v in params.items()}
         result = await _probe(base_url, params=test_params)
@@ -48,11 +48,11 @@ async def xss_check(url: str):
 async def open_redirect_check(url: str):
     targets = ["https://evil.com", "//evil.com"]
     findings = []
-    parsed = urlib.parse.urlparse(url)
+    parsed = urllib.parse.urlparse(url)
     base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
     for param in ["redirect", "url", "next", "return", "goto", "target"]:
         for t in targets:
-            result = await _probe(base_url, params={param: t, **(dict(urlib.parse.parse_qsl(parsed.query)) or {"q":"test"})})
+            result = await _probe(base_url, params={param: t, **(dict(urllib.parse.parse_qsl(parsed.query)) or {"q":"test"})})
             if result.get("status") in (301, 302, 303, 307, 308) and "evil.com" in str(result.get("headers", {}).get("location", "")).lower():
                 findings.append({"param": param, "payload": t})
     return {"url": url, "vulnerable": len(findings) > 0, "findings": findings}
@@ -60,7 +60,7 @@ async def open_redirect_check(url: str):
 async def ssrf_check(url: str):
     internal = ["http://169.254.169.254/latest/meta-data/", "http://localhost:22", "http://127.0.0.1:80"]
     findings = []
-    parsed = urlib.parse.urlparse(url)
+    parsed = urllib.parse.urlparse(url)
     base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
     for param in ["url", "uri", "path", "proxy", "src", "file", "fetch", "endpoint", "link"]:
         for t in internal:
@@ -72,7 +72,7 @@ async def ssrf_check(url: str):
 async def path_traversal_check(url: str):
     payloads = ["../../../etc/passwd", "..%2f..%2f..%2fetc%2fpasswd", "....//....//....//etc/passwd"]
     findings = []
-    parsed = urlib.parse.urlparse(url)
+    parsed = urllib.parse.urlparse(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     for param in ["file", "page", "path", "include", "template"]:
         for p in payloads:

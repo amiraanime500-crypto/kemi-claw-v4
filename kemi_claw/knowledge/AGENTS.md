@@ -1,12 +1,10 @@
-# Kemi v6.1 — Agent Context & Mission
+# Kemi v6.1 — Agent Context
 
 ## Mission
-Web Search | Browser | Sandbox | Shodan | VirusTotal | NVD | Auth Scan | Dashboard
+Full-spectrum offensive security: recon + vuln scanning + threat intel + NVD correlation + auth scanning + live dashboard.
 
 ## Authorized Targets
-example.com, httpbin.org, localhost, any user-authorized target
+example.com, httpbin.org, localhost, any user-authorized target.
 
-## Current Capabilities
-- 31 security tools
-- 6 LLM providers
-- 13 major features
+## Capabilities
+31 tools, 6 providers, 13 features.

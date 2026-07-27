@@ -1,35 +1,27 @@
-"""Slack alerts and Jira issue creation for critical findings."""
-import os
+"""WebSocket + Slack notifications."""
+import asyncio, json, os
+_ws_clients: list = []
 
-import httpx
+def add_ws_client(send_fn): _ws_clients.append(send_fn)
+def remove_ws_client(send_fn):
+    if send_fn in _ws_clients: _ws_clients.remove(send_fn)
 
+async def ws_broadcast(event_type: str, data: dict):
+    msg = json.dumps({"type": event_type, "data": data})
+    dead = []
+    for s in _ws_clients:
+        try: await s.send_text(msg)
+        except: dead.append(s)
+    for d in dead: _ws_clients.remove(d)
 
-async def notify_slack(text: str):
-    url = os.getenv("SLACK_WEBHOOK_URL")
-    if not url:
-        return {"skipped": "no SLACK_WEBHOOK_URL"}
-    async with httpx.AsyncClient(timeout=30) as c:
-        r = await c.post(url, json={"text": text})
-        return {"status": r.status_code}
+async def notify_finding(finding: dict):
+    await ws_broadcast("finding", finding)
 
-
-async def create_jira_issue(summary: str, description: str):
-    base = os.getenv("JIRA_BASE_URL")
-    user = os.getenv("JIRA_USER")
-    token = os.getenv("JIRA_TOKEN")
-    project = os.getenv("JIRA_PROJECT", "SEC")
-    if not all([base, user, token]):
-        return {"skipped": "jira not configured"}
-    async with httpx.AsyncClient(timeout=30, auth=(user, token)) as c:
-        r = await c.post(
-            f"{base}/rest/api/2/issue",
-            json={
-                "fields": {
-                    "project": {"key": project},
-                    "summary": summary,
-                    "description": description,
-                    "issuetype": {"name": "Bug"},
-                }
-            },
-        )
-        return {"status": r.status_code, "body": r.json()}
+async def notify_slack(msg: str):
+    url = os.getenv("SLACK_WEBHOOK_URL","")
+    if not url: return
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            await c.post(url, json={"text": f"[Kemi] {msg}"})
+    except: pass

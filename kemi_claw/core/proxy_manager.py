@@ -1,9 +1,7 @@
 """Proxy rotation manager + intelligent rate limiting."""
 import asyncio, os, random, time
-from collections import defaultdict
+from collections 
 
-_defaultdict = defaultdict
-import defaultdict
 _proxies = []
 _current_idx = 0
 _rate_limits = defaultdict(lambda: {"last_request": 0, "count": 0, "window_start": time.time()})

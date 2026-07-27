@@ -1,12 +1,11 @@
 import os
 from dataclasses import dataclass
 
-
 @dataclass
 class Settings:
     agent_name: str = "Kemi-Claw"
-    model_provider: str = os.getenv("KEMI_MODEL_PROVIDER", "claude")
-    model_name: str = os.getenv("KEMI_MODEL_NAME", "claude-sonnet-4")
+    model_provider: str = os.getenv("KEMI_MODEL_PROVIDER", "nvidia")
+    model_name: str = os.getenv("KEMI_MODEL_NAME", "meta/llama-3.1-8b-instruct")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     deepseek_api_key: str = os.getenv("DEEPSEEK_API_KEY", "")
@@ -16,6 +15,5 @@ class Settings:
     server_host: str = os.getenv("KEMI_HOST", "0.0.0.0")
     server_port: int = int(os.getenv("KEMI_PORT", "8000"))
     require_scope_confirmation: bool = True
-
 
 settings = Settings()
