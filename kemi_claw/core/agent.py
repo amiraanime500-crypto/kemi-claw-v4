@@ -21,6 +21,11 @@ import kemi_claw.tools.injection_scanner
 import kemi_claw.tools.api_security
 import kemi_claw.tools.reporter
 import kemi_claw.tools.parallel_scanner
+import kemi_claw.tools.deser_scanner
+import kemi_claw.tools.web_advanced
+import kemi_claw.tools.cloud_scanner
+import kemi_claw.tools.osint_tools
+import kemi_claw.tools.stealth_mobile
 import kemi_claw.tools.env_control
 from ..integrations.threat_intel import shodan_host, virustotal_domain
 from ..utils.cli import print_scan_header, print_scan_result, print_finding
