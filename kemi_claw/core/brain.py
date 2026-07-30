@@ -1,5 +1,6 @@
 """Persistent cross-session memory backed by SQLite."""
 import json
+import os
 import sqlite3
 import time
 
@@ -8,7 +9,12 @@ from ..config import settings
 
 class Brain:
     def __init__(self, path: str = None):
-        self.conn = sqlite3.connect(path or settings.brain_path)
+        db_path = path or settings.brain_path
+        parent = os.path.dirname(os.path.abspath(db_path))
+        os.makedirs(parent, exist_ok=True)
+        self.conn = sqlite3.connect(db_path, timeout=10)
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=10000")
         self._init_db()
 
     def _init_db(self):

@@ -1,6 +1,7 @@
-"""Live real-time dashboard — WebSocket-powered monitoring."""
-import asyncio, json, os, time
-from datetime import datetime,timezone, timezone, timezone, timezone, timezone
+"""Live real-time dashboard state and WebSocket events."""
+import asyncio, json, time
+from datetime import datetime, timezone
+from ..config import VERSION
 
 _active_scans = {}; _subscribers = []; _scan_history = []
 
@@ -27,6 +28,10 @@ def update_step(session, tool, success=True):
     s = _active_scans[session]; s["steps_completed"] += 1
     if tool: s["tools_used"].add(tool)
     if not success: s["errors"] += 1
+    asyncio.create_task(_broadcast("step_complete", {
+        "session": session, "tool": tool, "success": success,
+        "steps_completed": s["steps_completed"],
+    }))
 
 def complete_scan(session, success_rate, vulns_found=0, report_path=None):
     if session not in _active_scans: return
@@ -43,26 +48,34 @@ def get_dashboard_state():
             "active_details": [{"session": s["session"][:8], "target": s["target"],
                                 "progress": f'{s["steps_completed"]} steps'} for s in _active_scans.values()],
             "recent_scans": _scan_history[-5:], "total_completed": len(_scan_history),
-            "ws_subscribers": len(_subscribers), "version": "6.1"}
+            "ws_subscribers": len(_subscribers), "version": VERSION}
 
-DASHBOARD_HTML = "<!DOCTYPE html><html><head><meta charset=utf-8><title>Kemi v6.1</title>" \
-"<style>body{font-family:system-ui;background:#0a0f1a;color:#e2e8f0;padding:20px}" \
-".card{background:#151b2e;padding:16px;border-radius:10px;text-align:center;display:inline-block;margin:8px;min-width:140px}" \
-".val{font-size:2em;font-weight:bold}.lbl{color:#64748b;font-size:.8em}" \
-".scan{background:#151b2e;padding:10px;border-radius:8px;margin:6px 0}" \
-"table{width:100%;border-collapse:collapse;background:#151b2e}" \
-"th,td{padding:10px}th{background:#1e2538}" \
-".good{color:#22c55e}.bad{color:#ef4444}.warn{color:#f59e0b}" \
-"</style></head><body><h1>Kemi v6.1 Dashboard</h1>" \
-"<div id=cards></div><h3>Active</h3><div id=active-scans></div>" \
-"<h3>History</h3><table><tr><th>Target</th><th>Steps</th><th>Rate</th><th>Vulns</th><th>Time</th></tr>" \
-"<tbody id=history></tbody></table>" \
-"<script>const ws=new WebSocket('ws://'+location.host+'/ws');ws.onmessage=()=>load();" \
-"async function load(){const r=await fetch('/dashboard/state');const s=await r.json();" \
-"document.getElementById('cards').innerHTML=" \
-"'<div class=card><div class=val>'+s.active_scans+'</div><div class=lbl>Active</div></div>'+'" \
-"'<div class=card><div class=val>'+s.total_completed+'</div><div class=lbl>Done</div></div>';" \
-"let v=0;s.recent_scans.forEach(x=>v+=(x.vulns_found||0));" \
-"document.getElementById('history').innerHTML=s.recent_scans.map(x=>" \
-"'<tr><td>'+x.target+'</td><td>'+(x.steps||0)+'</td><td class='+(x.success_rate>80?'good':'bad')+'>'+(x.success_rate||0)+'%</td><td>'+(x.vulns_found||0)+'</td><td>'+(x.elapsed_seconds||0)+'s</td></tr>').join('')}" \
-"load();setInterval(load,3000)</script></body></html>"
+DASHBOARD_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kemi-Claw Dashboard</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#070b12;color:#e8edf6}
+body{max-width:1100px;margin:auto;padding:32px 20px}header{display:flex;align-items:center;justify-content:space-between}
+h1{font-size:clamp(1.8rem,4vw,3rem);margin:0}.status{color:#8a96aa}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:28px 0}
+.card,.scan,table{background:#101722;border:1px solid #202c3c;border-radius:14px}.card{padding:20px}.value{font-size:2rem;font-weight:700;color:#6ee7b7}
+.label{color:#8a96aa}.scan{padding:14px;margin:8px 0}table{width:100%;border-collapse:collapse;overflow:hidden}th,td{padding:12px;text-align:left;border-bottom:1px solid #202c3c}
+th{color:#8a96aa}.good{color:#6ee7b7}.bad{color:#fb7185}.empty{color:#69768a;padding:16px 0}
+@media(max-width:650px){.grid{grid-template-columns:1fr}table{font-size:.8rem}th,td{padding:8px}}
+</style></head><body>
+<header><div><h1>Kemi-Claw</h1><div class="status" id="status">Connecting...</div></div><div id="version"></div></header>
+<section class="grid" id="cards"></section><h2>Active scans</h2><div id="active"></div>
+<h2>Recent history</h2><table><thead><tr><th>Target</th><th>Steps</th><th>Success</th><th>Findings</th><th>Time</th></tr></thead><tbody id="history"></tbody></table>
+<script>
+const key=localStorage.getItem('kemi_api_key')||prompt('KEMI API key');if(key)localStorage.setItem('kemi_api_key',key);
+const el=id=>document.getElementById(id);const add=(p,tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;p.appendChild(n);return n};
+function card(value,label){const n=document.createElement('div');n.className='card';add(n,'div',value,'value');add(n,'div',label,'label');return n}
+async function load(){
+ try{const r=await fetch('/dashboard/state',{headers:{'x-api-key':key||''}});if(!r.ok)throw new Error(r.status===401?'Invalid API key':'HTTP '+r.status);const s=await r.json();
+ el('version').textContent='v'+s.version;el('cards').replaceChildren(card(s.active_scans,'Active'),card(s.total_completed,'Completed'),card(s.ws_subscribers,'Live viewers'));
+ const active=el('active');active.replaceChildren();s.active_details.forEach(x=>{const n=document.createElement('div');n.className='scan';add(n,'strong',x.target);add(n,'div',x.progress,'label');active.appendChild(n)});if(!s.active_details.length)add(active,'div','No scans are running.','empty');
+ const body=el('history');body.replaceChildren();s.recent_scans.slice().reverse().forEach(x=>{const row=document.createElement('tr');[x.target,x.steps,(x.success_rate||0)+'%',x.vulns_found||0,(x.elapsed_seconds||0)+'s'].forEach((v,i)=>add(row,'td',v,i===2?(x.success_rate>80?'good':'bad'):''));body.appendChild(row)});
+ el('status').textContent='Live monitoring';
+ }catch(e){el('status').textContent=e.message}}
+function connect(){const proto=location.protocol==='https:'?'wss:':'ws:';const ws=new WebSocket(proto+'//'+location.host+'/ws');ws.onmessage=load;ws.onopen=()=>{ws.send(key||'');load()};ws.onclose=()=>setTimeout(connect,3000)}
+load();connect();setInterval(load,5000);
+</script></body></html>"""

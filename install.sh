@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# 🐺 Kemi-Claw v6.1 — One-Line Installer
+# Kemi-Claw v6.2.0 — One-Line Installer
 # curl -fsSL https://raw.githubusercontent.com/amiraanime500-crypto/kemi-claw-v4/main/install.sh | bash
 # ============================================================
 set -euo pipefail
@@ -9,7 +9,7 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 
-KEMI_VERSION="6.1"
+KEMI_VERSION="6.2.0"
 INSTALL_DIR="${HOME}/.kemi"
 REPO_URL="https://github.com/amiraanime500-crypto/kemi-claw-v4.git"
 
@@ -55,8 +55,7 @@ install_kemi() {
     cd "${INSTALL_DIR}"
 
     info "Installing Python dependencies..."
-    pip3 install -q fastapi uvicorn httpx pydantic aiohttp \
-        duckduckgo_search apscheduler ddgs 2>&1 | tail -1
+    pip3 install -q -e ".[dev]" 2>&1 | tail -1
 
     info "Core installed. Optional dependencies:"
     echo "    playwright  →  pip3 install playwright && playwright install chromium"
@@ -73,7 +72,7 @@ create_launcher() {
 
     cat > "${LAUNCHER}" << 'LAUNCHEREOF'
 #!/usr/bin/env bash
-# Kemi-Claw v6.1 Launcher
+# Kemi-Claw v6.2.0 Launcher
 KEMI_HOME="${HOME}/.kemi"
 cd "${KEMI_HOME}"
 
@@ -84,18 +83,20 @@ case "${1:-}" in
         ;;
     scan)
         TARGET="${2:-}"
-        if [[ -z "${TARGET}" ]]; then
-            echo "Usage: kemi scan <target>"
-            echo "Example: kemi scan httpbin.org"
+        CONFIRM="${3:-}"
+        if [[ -z "${TARGET}" || "${CONFIRM}" != "authorized" ]]; then
+            echo "Usage: kemi scan <https://target> authorized"
+            echo "Only scan systems you own or have written permission to test."
             exit 1
         fi
         echo "🐺 Scanning ${TARGET} ..."
+        export KEMI_CLI_TARGET="${TARGET}"
         exec python3 -c "
-import asyncio
+import asyncio, os
 from kemi_claw.core.agent import KemiClawAgent
 async def main():
     agent = KemiClawAgent()
-    result = await agent.run('full reconnaissance', '${TARGET}', authorized=True)
+    result = await agent.run('full reconnaissance', os.environ['KEMI_CLI_TARGET'], authorized=True)
     print(f'Scan complete: {len(result.get(\"results\",[]))} steps')
 asyncio.run(main())"
         ;;
@@ -109,12 +110,13 @@ asyncio.run(main())"
             exit 1
         fi
         echo "🤖 Kemi Agent: ${GOAL}"
+        export KEMI_CLI_GOAL="${GOAL}"
         exec python3 -c "
-import asyncio
+import asyncio, os
 from kemi_claw.core.general_agent import GeneralAgent
 async def main():
-    agent = GeneralAgent(provider='nvidia', model='meta/llama-3.1-8b-instruct')
-    result = await agent.run('${GOAL}')
+    agent = GeneralAgent()
+    result = await agent.run(os.environ['KEMI_CLI_GOAL'])
     ok = result.get('successful', 0)
     total = result.get('steps_executed', 0)
     print(f'Done: {ok}/{total} steps succeeded in {result.get(\"elapsed_seconds\",0)}s')
@@ -126,8 +128,8 @@ asyncio.run(main())"
         exec python3 -m uvicorn kemi_claw.server:app --host 0.0.0.0 --port "${PORT:-8000}"
         ;;
     test)
-        echo "🧪 Running 50-test integration suite..."
-        exec python3 test_50_suite.py
+        echo "Running unit and security tests..."
+        exec python3 -m pytest -q
         ;;
     health)
         curl -s "http://localhost:${PORT:-8000}/health" | python3 -m json.tool 2>/dev/null || echo "Server not running"
@@ -136,7 +138,7 @@ asyncio.run(main())"
         echo "🔄 Updating Kemi..."
         cd "${KEMI_HOME}"
         git pull origin main
-        pip3 install -q -r <(echo -e "fastapi\nuvicorn\nhttpx\npydantic\naiohttp\nduckduckgo_search\napscheduler\nddgs") 2>/dev/null
+        pip3 install -q -e .
         echo "✅ Kemi updated to latest version"
         ;;
     env|setup)
@@ -146,13 +148,15 @@ asyncio.run(main())"
         echo ""
         echo "  export KEMI_MODEL_PROVIDER=nvidia"
         echo "  export KEMI_MODEL_NAME=meta/llama-3.1-8b-instruct"
-        echo "  export OPENAI_API_KEY=<your-nvidia-api-key>"
+        echo "  export NVIDIA_API_KEY=<your-nvidia-api-key>"
+        echo "  export KEMI_API_KEY=<strong-random-api-key>"
+        echo "  export KEMI_JWT_SECRET=<at-least-24-random-characters>"
         echo "  export TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>  # optional"
         echo ""
         echo "Or create a .env file in ~/.kemi:"
         echo ""
         echo "  KEMI_MODEL_PROVIDER=nvidia"
-        echo "  OPENAI_API_KEY=nvapi-..."
+        echo "  NVIDIA_API_KEY=<your-key>"
         ;;
     pentest)
         echo "🔥 Launching ShadowStrike Pentest Lab..."
@@ -164,11 +168,11 @@ asyncio.run(main())"
         ls -la
         ;;
     *)
-        echo "🐺 Kemi-Claw v6.1 — Autonomous Security AI Agent"
+        echo "Kemi-Claw v6.2.0 — Authorized Security AI Agent"
         echo ""
         echo "Commands:"
         echo "  kemi start         Start the server (http://localhost:8000)"
-        echo "  kemi scan <target> Run security scan on a target"
+        echo "  kemi scan <target> authorized  Run an authorized scan"
         echo "  kemi agent <task>  General AI agent (any task)"
         echo "  kemi dashboard     Open live dashboard"
         echo "  kemi test          Run 50-test integration suite"

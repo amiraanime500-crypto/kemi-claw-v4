@@ -20,14 +20,18 @@ async def browser_probe(url: str, actions: str = "screenshot"):
         for action in actions.split(","):
             action = action.strip()
             if action == "get_forms":
-                forms = await page.evaluate("""() => {const forms=document.querySelectorAll('form');return Array.from(forms).map(f=>({action:f.action,method:f.method,inputs:Array.from(f.querySelectorAll('input,textarea,select')).map(i=>((name:i.name,type:i.type))}));}""")
+                forms = await page.evaluate("""() => {const forms=document.querySelectorAll('form');return Array.from(forms).map(f=>({action:f.action,method:f.method,inputs:Array.from(f.querySelectorAll('input,textarea,select')).map(i=>({name:i.name,type:i.type}))}));}""")
                 result["forms"] = forms
         result["content_length"] = len(await page.content())
         await browser.close()
+        await p.stop()
         return result
     except Exception as e:
         if browser:
             try: await browser.close()
+            except: pass
+        if p:
+            try: await p.stop()
             except: pass
         return {"error": str(e), "url": url}
 

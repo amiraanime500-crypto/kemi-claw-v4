@@ -1,18 +1,17 @@
-"""WebSocket + Slack notifications."""
-import asyncio, json, os
-_ws_clients: list = []
+"""Dashboard and Slack notifications."""
+import os
+from ..dashboard.live import _broadcast
 
-def add_ws_client(send_fn): _ws_clients.append(send_fn)
+def add_ws_client(send_fn):
+    from ..dashboard.live import register_ws
+    register_ws(send_fn)
+
 def remove_ws_client(send_fn):
-    if send_fn in _ws_clients: _ws_clients.remove(send_fn)
+    from ..dashboard.live import unregister_ws
+    unregister_ws(send_fn)
 
 async def ws_broadcast(event_type: str, data: dict):
-    msg = json.dumps({"type": event_type, "data": data})
-    dead = []
-    for s in _ws_clients:
-        try: await s.send_text(msg)
-        except: dead.append(s)
-    for d in dead: _ws_clients.remove(d)
+    await _broadcast(event_type, data)
 
 async def notify_finding(finding: dict):
     await ws_broadcast("finding", finding)

@@ -19,10 +19,12 @@ def run_target(self, goal, target, provider=None, authorized=False):
 
 
 @celery_app.task(name="kemi.run_batch")
-def run_batch(goal, targets, provider=None):
+def run_batch(goal, targets, provider=None, authorized=False):
     """Fan a list of targets out across multiple workers."""
+    if not authorized:
+        return {"error": "target authorization not confirmed", "queued": []}
     job_ids = []
     for t in targets:
-        async_res = run_target.delay(goal, t, provider, True)
+        async_res = run_target.delay(goal, t, provider, authorized)
         job_ids.append({"target": t, "task_id": async_res.id})
     return {"queued": job_ids}

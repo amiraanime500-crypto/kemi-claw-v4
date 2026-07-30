@@ -1,4 +1,4 @@
-"""Unified provider layer for any LLM backend: Claude / GPT / Deepseek / local."""
+"""Unified provider layer for supported LLM backends."""
 import httpx
 
 from ..config import settings
@@ -6,21 +6,22 @@ from ..config import settings
 
 class LLMProvider:
     def __init__(self, provider: str = None, model: str = None):
-        self.provider = provider or settings.model_provider
+        aliases = {"claude": "anthropic", "local": "ollama"}
+        self.provider = aliases.get(provider or settings.model_provider, provider or settings.model_provider)
         self.model = model or settings.model_name
 
     async def complete(self, system: str, messages: list) -> str:
-        if self.provider == "claude":
+        if self.provider == "anthropic":
             return await self._anthropic(system, messages)
-        if self.provider == "openai" or self.provider == "nvidia":
+        if self.provider in {"openai", "nvidia", "openrouter", "ollama"}:
             return await self._openai_compat(system, messages)
         if self.provider == "deepseek":
             return await self._deepseek(system, messages)
-        if self.provider == "local":
-            return await self._local(system, messages)
         raise ValueError(f"Unknown provider: {self.provider}")
 
     async def _anthropic(self, system, messages):
+        if not settings.anthropic_api_key:
+            raise ValueError("ANTHROPIC_API_KEY is not configured")
         async with httpx.AsyncClient(timeout=600) as c:
             r = await c.post(
                 "https://api.anthropic.com/v1/messages",
@@ -43,10 +44,12 @@ class LLMProvider:
         cfg = get_provider_config(self.provider)
         base_url = cfg.get("base_url", "https://api.openai.com/v1")
         api_key = cfg.get("api_key") or settings.openai_api_key
+        if self.provider != "ollama" and not api_key:
+            raise ValueError(f"{cfg['env_key']} is not configured")
         async with httpx.AsyncClient(timeout=600) as c:
             r = await c.post(
                 f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
+                headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
                 json={
                     "model": self.model,
                     "messages": [{"role": "system", "content": system}, *messages],
@@ -56,6 +59,8 @@ class LLMProvider:
             return r.json()["choices"][0]["message"]["content"]
 
     async def _deepseek(self, system, messages):
+        if not settings.deepseek_api_key:
+            raise ValueError("DEEPSEEK_API_KEY is not configured")
         async with httpx.AsyncClient(timeout=600) as c:
             r = await c.post(
                 "https://api.deepseek.com/chat/completions",

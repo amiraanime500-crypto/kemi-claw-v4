@@ -7,9 +7,13 @@ from .models import Role
 
 class UserStore:
     def __init__(self, path=None):
+        db_path = path or os.getenv("KEMI_USERS_DB", "./kemi_users.db")
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
         self.conn = sqlite3.connect(
-            path or os.getenv("KEMI_USERS_DB", "./kemi_users.db")
+            db_path, timeout=10
         )
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=10000")
         self.conn.execute(
             """CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,

@@ -6,5 +6,11 @@ celery
 redis
 jinja2
 pyjwt
-passlib[bcrypt]
+bcrypt>=4
 python-multipart
+aiohttp
+apscheduler
+ddgs
+dnspython
+python-whois
+flower

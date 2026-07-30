@@ -158,8 +158,12 @@ Return ONLY valid JSON array. Example:
         steps = await self._plan_steps(goal, context)
         
         if not steps:
-            # LLM failed to plan — try direct execution
-            steps = [{"step": 1, "action": goal, "tool": "shell_exec", "args": {"command": goal}}]
+            return {
+                "session": self.session, "goal": goal, "steps_planned": 0,
+                "steps_executed": 0, "successful": 0, "failed": 1,
+                "elapsed_seconds": int(time.time() - start_time),
+                "results": [{"error": "The model did not return a valid tool plan."}],
+            }
         
         print(f"[GeneralAgent] Planned {len(steps)} steps for: {goal[:80]}")
         

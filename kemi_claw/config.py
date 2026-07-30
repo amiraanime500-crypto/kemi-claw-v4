@@ -1,6 +1,8 @@
 import os
 from dataclasses import dataclass
 
+VERSION = "6.2.0"
+
 @dataclass
 class Settings:
     agent_name: str = "Kemi-Claw"
@@ -15,5 +17,8 @@ class Settings:
     server_host: str = os.getenv("KEMI_HOST", "0.0.0.0")
     server_port: int = int(os.getenv("KEMI_PORT", "8000"))
     require_scope_confirmation: bool = True
+    api_key: str = os.getenv("KEMI_API_KEY", "")
+    step_timeout: int = int(os.getenv("KEMI_STEP_TIMEOUT", "180"))
+    max_plan_steps: int = int(os.getenv("KEMI_MAX_PLAN_STEPS", "12"))
 
 settings = Settings()

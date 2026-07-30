@@ -1,5 +1,7 @@
 # Kemi-Claw
 
+Current release: **v6.2.0**
+
 **Kemi-Claw** is an autonomous, **authorization-gated** offensive-security AI agent. It plans, executes, evaluates and re-plans security tasks against targets you are **explicitly authorized** to test. It ships with a planning brain, persistent cross-session memory, a pluggable any-LLM provider layer, MCP-style tool integration, a Client/Server API, a Celery/Redis task queue, a web dashboard, and role-based access control (RBAC).
 
 > **Legal & safety notice.** Every run is guarded by `require_scope_confirmation`. The agent refuses to act unless `authorized=true` is passed for the target. Use Kemi-Claw **only** on systems you own or have explicit written permission to test (licensed pentests, authorized bug-bounty scope, or your own lab). Unauthorized use is illegal.
@@ -16,7 +18,7 @@
 | **MCP tools** (`tools/`) | Registry + built-in `nmap_scan`, `http_probe`; auto-loaded `plugins/`. |
 | **Agent loop** (`core/agent.py`) | Parallel step execution, per-step failure isolation, logging, Markdown report. |
 | **Autopilot** (`core/autopilot.py`) | Unattended multi-target runs. |
-| **Integrations** (`integrations/`) | Slack alerts, Jira issues, Burp Suite scans. |
+| **Integrations** (`integrations/`) | Private Telegram bot, Slack alerts, threat intelligence, Burp Suite scans. |
 | **Live CVE** (`knowledge/cve_live.py`) | Queries the NVD API. |
 | **Queue** (`queue/`) | Celery + Redis fan-out across workers. |
 | **Dashboard** (`web/`) | FastAPI + Jinja UI to launch batches and view sessions. |
@@ -64,8 +66,7 @@
 ## Quick start (Docker, recommended)
 
 ```bash
-cp .env.example .env        # set ANTHROPIC_API_KEY, KEMI_JWT_SECRET, KEMI_API_KEY
-mkdir -p data
+cp .env.example .env        # set provider key, KEMI_JWT_SECRET, KEMI_API_KEY
 docker compose up --build   # api:8000  dashboard:8080  flower:5555
 ```
 
@@ -93,7 +94,7 @@ kemi-claw "discover web vulns" "https://your-authorized-target" mykey
 # or the raw API
 curl -X POST http://localhost:8000/run \
   -H "x-api-key: mykey" -H "Content-Type: application/json" \
-  -d '{"goal":"recon","target":"https://authorized","authorized":true,"notify":false}'
+  -d '{"goal":"recon","target":"https://authorized","authorized":true}'
 ```
 
 ## Batch via the dashboard (RBAC)
@@ -112,8 +113,20 @@ curl -X POST http://localhost:8080/auth/users \
 # 3) operator launches a batch
 curl -X POST http://localhost:8080/api/batch \
   -H "Authorization: Bearer <OPERATOR_TOKEN>" -H "Content-Type: application/json" \
-  -d '{"goal":"full recon","targets":["https://t1","https://t2"]}'
+  -d '{"goal":"full recon","targets":["https://t1","https://t2"],"authorized":true}'
 ```
+
+## Telegram (optional)
+
+Set both variables below. The bot remains disabled when the allowlist is empty.
+
+```bash
+TELEGRAM_BOT_TOKEN=...
+KEMI_TELEGRAM_ALLOWED_IDS=123456789,987654321
+KEMI_ENABLE_GENERAL_AGENT=false
+```
+
+An authorized scan uses `/scan https://target.example authorized optional goal`. Credentials are never accepted through Telegram commands. Keep the general agent disabled unless host-level tools are explicitly required.
 
 ## Autopilot (CLI)
 
@@ -146,3 +159,9 @@ Drop a module in `plugins/` that calls `registry.register(...)`. Load them at st
 - JWTs are short-lived (`KEMI_JWT_TTL`) and signed with `KEMI_JWT_SECRET` -- change it before deploying.
 - Least privilege: start every user as `viewer`.
 - `require_scope_confirmation` sits **above** RBAC -- even an authorized operator cannot run against an unconfirmed target.
+- The API requires `x-api-key` and refuses to start execution if `KEMI_API_KEY` is missing.
+- Security plans use the scanning registry only; host shell, package installation and file-control tools are not exposed through `/run`.
+- Planned steps execute in order with bounded step counts and per-tool timeouts.
+- Redis is private to the Compose network and containers run as an unprivileged user.
+
+See `SECURITY.md` before exposing the service outside a trusted network.

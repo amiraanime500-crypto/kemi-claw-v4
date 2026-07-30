@@ -7,5 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN pip install --no-cache-dir -e .
+RUN mkdir -p /app/data && useradd --system --uid 10001 kemi && chown -R kemi:kemi /app
+USER kemi
 EXPOSE 8000
 CMD ["uvicorn", "kemi_claw.server:app", "--host", "0.0.0.0", "--port", "8000"]

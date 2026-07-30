@@ -6,7 +6,7 @@ import asyncio, json, os, sys, time, uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
-os.environ.setdefault("KEMI_JWT_SECRET", "test_secret_key_12345")
+os.environ.setdefault("KEMI_JWT_SECRET", "test_secret_key_at_least_32_chars")
 os.environ.setdefault("KEMI_JWT_TTL", "3600")
 
 # A. MCP Registry (8 tests)
@@ -66,7 +66,7 @@ class TestMCPRegistry:
         from kemi_claw.tools.mcp_registry import registry
         names = [t["name"] for t in registry.manifest()]
         assert "http_probe" in names and "nmap_scan" in names
-        assert lef(names) >= 8
+        assert len(names) >= 8
 
 # B. Brain (6 tests)
 class TestBrain:
@@ -222,6 +222,33 @@ class TestPlanner:
         r = _validate_plan({"steps": [{"tool":"t1"},"bad",None,{"tool":"t2"}]})
         assert len(r["steps"]) == 2
 
+    def test_validate_plan_rejects_unknown_tools(self):
+        from kemi_claw.core.planner import _validate_plan
+        plan = {"steps": [{"tool": "allowed", "args": {}}, {"tool": "shell_exec", "args": {}}]}
+        assert [s["tool"] for s in _validate_plan(plan, ["allowed"])["steps"]] == ["allowed"]
+
+
+class TestServerSecurity:
+    def test_run_requires_api_key(self, monkeypatch):
+        from fastapi.testclient import TestClient
+        from kemi_claw.config import settings
+        from kemi_claw.server import app
+        monkeypatch.setattr(settings, "api_key", "test-api-key")
+        response = TestClient(app).post("/run", json={
+            "goal": "authorized scan", "target": "https://example.com", "authorized": True,
+        })
+        assert response.status_code == 401
+
+    def test_run_rejects_invalid_target_before_execution(self, monkeypatch):
+        from fastapi.testclient import TestClient
+        from kemi_claw.config import settings
+        from kemi_claw.server import app
+        monkeypatch.setattr(settings, "api_key", "test-api-key")
+        response = TestClient(app).post("/run", headers={"x-api-key": "test-api-key"}, json={
+            "goal": "authorized scan", "target": "file:///etc/passwd", "authorized": True,
+        })
+        assert response.status_code == 422
+
 # F. LLM Provider (4 mock tests)
 class TestLLMProvider:
     def test_unknown_provider(self):
@@ -251,7 +278,7 @@ class TestLLMProvider:
             mp.return_value = mr
             llm = LLMProvider(provider="openai", model="t/m")
             r = await llm.complete("s",[{"role":"user","content":"hi"}])
-            assert r == "test" and "nvidia.com" in str(mp.call_args)
+            assert r == "test" and "api.openai.com" in str(mp.call_args)
 
 # G. Real LLM (skip if no API key)
 @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="No API key")

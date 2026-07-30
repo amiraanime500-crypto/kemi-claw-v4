@@ -13,5 +13,8 @@ celery_app.conf.update(
     accept_content=["json"],
     task_track_started=True,
     result_expires=86400,
+    task_soft_time_limit=900,
+    task_time_limit=960,
+    worker_prefetch_multiplier=1,
     imports=("kemi_claw.queue.tasks",),
 )

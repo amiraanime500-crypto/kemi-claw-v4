@@ -1,8 +1,9 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
 
   api:
     build: .
@@ -10,6 +11,8 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    volumes:
+      - kemi-data:/app/data
     depends_on:
       - redis
 
@@ -20,7 +23,7 @@ services:
       - "8080:8080"
     env_file: .env
     volumes:
-      - ./data:/app/data
+      - kemi-data:/app/data
     depends_on:
       - redis
 
@@ -28,6 +31,8 @@ services:
     build: .
     command: celery -A kemi_claw.queue.celery_app worker --loglevel=info -c 4
     env_file: .env
+    volumes:
+      - kemi-data:/app/data
     depends_on:
       - redis
 
@@ -35,6 +40,11 @@ services:
     build: .
     command: celery -A kemi_claw.queue.celery_app flower --port=5555
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
+    env_file: .env
     depends_on:
       - redis
+
+volumes:
+  kemi-data:
+  redis-data:

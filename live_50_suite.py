@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Kemi-Claw v6.1 — 50 Comprehensive Integration Tests"""
+"""Kemi-Claw v6.2 live integration checks (explicit opt-in required)."""
 import asyncio, json, os, sys, time, traceback
 from datetime import datetime
 
 PASS, FAIL, TOTAL = 0, 0, 0
 failures = []
+if os.getenv("KEMI_RUN_LIVE_TESTS", "").lower() not in {"1", "true", "yes"}:
+    raise SystemExit("Set KEMI_RUN_LIVE_TESTS=1 to run network and host integration checks.")
 os.environ["KEMI_MODEL_PROVIDER"] = "nvidia"
 os.environ["KEMI_MODEL_NAME"] = "meta/llama-3.1-8b-instruct"
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "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")
+os.environ.setdefault("NVIDIA_API_KEY", "")
 
 def test(name, fn):
     global PASS, FAIL, TOTAL, failures
@@ -33,7 +35,7 @@ async def t01(): x=__import__("kemi_claw.server").server; return x.app is not No
 test("Server module loads", t01)
 
 async def t02():
-    from kemi_claw.server import app; return app.title == "Kemi-Claw v6.1"
+    from kemi_claw.server import app; return app.title == "Kemi-Claw v6.2.0"
 test("App title correct", t02)
 
 async def t03():
