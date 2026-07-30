@@ -13,8 +13,10 @@ app = FastAPI(title="Kemi-Claw v6.1", version="6.1")
 async def startup():
     try:
         from kemi_claw.integrations.telegram_bot import start_bot
-        task = start_bot()
-        print("[Kemi v6.1] 🐺 Full Security Suite Active" if task else "[Kemi] No Telegram token")
+        coro = start_bot()
+        if coro:
+            asyncio.create_task(coro)
+            print("[Kemi v6.1] 🐺 Full Security Suite Active — Telegram bot ONLINE")
     except Exception as e: print(f"[Kemi] Error: {e}")
 
 class RunRequest(BaseModel):

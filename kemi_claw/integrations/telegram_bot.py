@@ -161,40 +161,33 @@ async def handle_message(cid, text, uname=""):
             else: await send_message(cid, f"*Logged in!* {r.get('cookie_count',0)} cookies")
         else: await send_message(cid, "Usage: `/auth <url> <user> <pass>`"); return
 
-    # LLM intent routing
-    resp = await _llm([{"role": "system", "content": SOUL}, {"role": "user", "content": f'Message: "{text}". Reply with: SCAN|<target>|<goal> or WEB|<query> or SHODAN|<ip> or NVD|<query> or CHAT'}])
-    resp = resp.strip()
-
-    if resp.startswith("SCAN|"):
-        p = resp.split("|", 2)
-        if len(p) >= 3: await _run_scan(cid, p[1].strip(), p[2].strip(), uname)
-    elif resp.startswith("WEB|"):
-        from kemi_claw.tools.web_search import web_search
-        r = await web_search(resp.split("|",1)[1].strip())
-        results = r.get("results", [])
-        if results: await send_message(cid, "*Web Search:*\n" + "\n".join(f"[{res['title']}]({res['url']})" for res in results[:5]))
-        else: await send_message(cid, "No results found")
-    elif resp.startswith("SHODAN|"):
-        from kemi_claw.integrations.threat_intel import shodan_host
-        r = await shodan_host(resp.split("|",1)[1].strip())
-        await send_message(cid, f"Shodan: {r.get('org','?')} | {len(r.get('ports',[]))} ports")
-    elif resp.startswith("NVD|"):
-        from kemi_claw.tools.nvd_correlator import nvd_scan_correlate
-        r = await nvd_scan_correlate(resp.split("|",1)[1].strip())
-        await send_message(cid, f"NVD: {r.get('total_found',0)} CVEs found")
-    else:
+    # If message starts with / it's a command → already handled above
+    # Everything else → natural conversation
+    if text and not text.startswith("/"):
+        # Build conversational context
         mem_ctx = ""
         try:
             from kemi_claw.core.honcho_memory import memory
             memory.remember_user(str(cid), uname)
             mem_ctx = memory.get_context(str(cid))
         except: pass
-        msgs = [{"role": "system", "content": f"{SOUL}\n\nYou are Kemi, a full security agent with Shodan, VirusTotal, NVD, browser, sandbox, scheduler, and dashboard."}]
-        if mem_ctx: msgs.append({"role": "system", "content": f"Memory: {mem_ctx}"})
-        msgs.extend(_conversations[cid][-10:])
-        response = await _llm(msgs)
+        
+        system_prompt = """أنت "كيمي" — وكيل ذكاء اصطناعي متكامل. تتحدث العربية بطلاقة.
+شخصيتك: ودود، ذكي، خفيف الظل، خبير في الأمن السيبراني والبرمجة.
+تستطيع: فحص المواقع، البحث في الإنترنت، تنزيل الملفات، كتابة الأكواد، تحليل البيانات.
+اذا احد سالك عن حالك: انت كيمي v6.1، وكيل امني ذاتي، بنيت في 2026، عندك 85 اداة.
+اذا احد قال لك فحص او افحص: تقوله يستخدم امر /scan
+خلي ردودك قصيرة ومفيدة. جاوب بالعربي دايم الا اذا سالك احد بلغة ثانية.
+لا تستخدم ايموجي زيادة عن اللزوم. كن طبيعي."""
+        
+        msgs = [{"role": "system", "content": system_prompt}]
+        if mem_ctx: msgs.append({"role": "system", "content": f"ذاكرة المستخدم: {mem_ctx}"})
+        msgs.extend(_conversations[cid][-12:])
+        
+        response = await _llm(msgs, max_tok=800)
         await send_message(cid, response)
-        _conversations[cid].append({"role": "assistant", "content": response[:200]})
+        _conversations[cid].append({"role": "assistant", "content": response[:300]})
+        return
 
 async def poll_updates():
     if not TELEGRAM_TOKEN: return
@@ -218,4 +211,4 @@ async def poll_updates():
 
 def start_bot():
     if not TELEGRAM_TOKEN: return None
-    return asyncio.create_task(poll_updates())
+    return poll_updates()
