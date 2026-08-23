@@ -1,3 +1,3 @@
 """Kemi-Claw evolving skills system."""
 
-from .manager.py import SkillManager
+from .manager import SkillManager
