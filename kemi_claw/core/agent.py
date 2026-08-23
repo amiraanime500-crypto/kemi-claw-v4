@@ -4,7 +4,7 @@ from ..config import settings
 from ..models.llm_provider import LLMProvider
 from ..models.multi_model import get_current
 from ..tools.mcp_registry import registry
-# Import ALL tool modules
+from ..cognition.orchestrator import CognitiveOrchestrator
 import kemi_claw.tools.builtin_tools
 import kemi_claw.tools.vuln_scanner
 import kemi_claw.tools.web_search
@@ -41,16 +41,14 @@ class KemiClawAgent:
         self.llm = LLMProvider(provider or cfg["provider"], model or cfg["model"])
         self.brain = Brain()
         self.planner = Planner(self.llm, self.brain)
+        self.cognition = CognitiveOrchestrator(self.brain)
         self.session = str(uuid.uuid4())
 
     async def _exec_step(self, target, step):
         tool_name = step.get("tool", "unknown")
         try:
             await respect_delay(target)
-            res = await asyncio.wait_for(
-                registry.call(tool_name, step.get("args", {})),
-                timeout=settings.step_timeout,
-            )
+            res = await asyncio.wait_for(registry.call(tool_name, step.get("args", {})), timeout=settings.step_timeout)
             success = not isinstance(res, dict) or "error" not in res
             dash_step(self.session, tool_name, success)
             if isinstance(res, dict) and res.get("vulnerable"):
@@ -68,6 +66,7 @@ class KemiClawAgent:
         if settings.require_scope_confirmation and not authorized:
             return {"error": "Refused: target authorization not confirmed."}
         all_results = []
+        self.cognition.before_task(goal, target)
         dash_start(self.session, target, goal)
         await ws_broadcast("scan_start", {"session": self.session, "target": target, "goal": goal})
         try:
@@ -76,12 +75,12 @@ class KemiClawAgent:
                 steps = plan.get("steps", [])
                 if not steps:
                     break
-                # Plans are ordered; dependent reconnaissance steps must not race.
                 for step in steps:
                     all_results.append(await self._exec_step(target, step))
                 decision = await self.planner.evaluate(goal, all_results)
                 if decision.get("decision") == "done":
                     break
+            self.cognition.after_task(goal, all_results)
             report = build_report(self.session, goal, target, all_results)
             return {"session": self.session, "results": all_results, "report": report}
         except Exception as exc:
