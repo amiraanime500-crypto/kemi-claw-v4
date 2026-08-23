@@ -4,6 +4,7 @@ from ..config import settings
 from ..models.llm_provider import LLMProvider
 from ..models.multi_model import get_current
 from ..tools.mcp_registry import registry
+from ..skills.tool_bridge import SkillToolBridge
 from ..cognition.orchestrator import CognitiveOrchestrator
 import kemi_claw.tools.builtin_tools
 import kemi_claw.tools.vuln_scanner
@@ -42,6 +43,7 @@ class KemiClawAgent:
         self.brain = Brain()
         self.planner = Planner(self.llm, self.brain)
         self.cognition = CognitiveOrchestrator(self.brain)
+        self.skill_bridge = SkillToolBridge()
         self.session = str(uuid.uuid4())
 
     async def _exec_step(self, target, step):
@@ -50,14 +52,17 @@ class KemiClawAgent:
             await respect_delay(target)
             res = await asyncio.wait_for(registry.call(tool_name, step.get("args", {})), timeout=settings.step_timeout)
             success = not isinstance(res, dict) or "error" not in res
+            self.skill_bridge.record(tool_name, success)
             dash_step(self.session, tool_name, success)
             if isinstance(res, dict) and res.get("vulnerable"):
                 await notify_finding({"tool": tool_name, "detail": str(res)[:200], "severity": "HIGH"})
         except asyncio.TimeoutError:
             res = {"error": f"tool timed out after {settings.step_timeout}s"}
+            self.skill_bridge.record(tool_name, False)
             dash_step(self.session, tool_name, False)
         except Exception as exc:
             res = {"error": str(exc)}
+            self.skill_bridge.record(tool_name, False)
             dash_step(self.session, tool_name, False)
         self.brain.remember(self.session, target, "step_result", {"step": step, "result": res})
         return {"step": step, "result": res}
