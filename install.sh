@@ -56,6 +56,10 @@ install_kemi() {
 
     info "Installing Python dependencies..."
     pip3 install -q -e ".[dev]" 2>&1 | tail -1
+    # Hermes-inspired MCP integration. Keep the MCP SDK explicit so the
+    # installer remains functional even when packaging metadata omits the
+    # requirements.txt file.
+    pip3 install -q "mcp==1.26.0" 2>&1 | tail -1
 
     info "Core installed. Optional dependencies:"
     echo "    playwright  →  pip3 install playwright && playwright install chromium"
@@ -80,6 +84,11 @@ case "${1:-}" in
     start|server)
         echo "🐺 Starting Kemi server on http://0.0.0.0:8000 ..."
         exec python3 -m uvicorn kemi_claw.server:app --host 0.0.0.0 --port "${PORT:-8000}"
+        ;;
+    mcp)
+        echo "🔌 Starting Kemi MCP server over stdio..."
+        echo "   Execution tools are disabled by default."
+        exec python3 -m kemi_claw.mcp_server
         ;;
     scan)
         TARGET="${2:-}"
@@ -139,6 +148,7 @@ asyncio.run(main())"
         cd "${KEMI_HOME}"
         git pull origin main
         pip3 install -q -e .
+        pip3 install -q "mcp==1.26.0"
         echo "✅ Kemi updated to latest version"
         ;;
     env|setup)
@@ -151,6 +161,7 @@ asyncio.run(main())"
         echo "  export NVIDIA_API_KEY=<your-nvidia-api-key>"
         echo "  export KEMI_API_KEY=<strong-random-api-key>"
         echo "  export KEMI_JWT_SECRET=<at-least-24-random-characters>"
+        echo "  export KEMI_MCP_ALLOW_EXECUTION=1  # optional: enable MCP agent execution"
         echo "  export TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>  # optional"
         echo ""
         echo "Or create a .env file in ~/.kemi:"
@@ -172,6 +183,7 @@ asyncio.run(main())"
         echo ""
         echo "Commands:"
         echo "  kemi start         Start the server (http://localhost:8000)"
+        echo "  kemi mcp           Start the local MCP server (stdio)"
         echo "  kemi scan <target> authorized  Run an authorized scan"
         echo "  kemi agent <task>  General AI agent (any task)"
         echo "  kemi dashboard     Open live dashboard"
@@ -182,7 +194,8 @@ asyncio.run(main())"
         echo "  kemi pentest       Launch pentest lab"
         echo ""
         echo "Quick start:"
-        echo "  kemi env    → see required env vars"
+        echo "  kemi env    → see environment setup"
+        echo "  kemi mcp    → connect Claude Code/Cursor/Codex via MCP"
         echo "  kemi start  → start the server"
         echo "  kemi health → verify it is running"
         ;;
@@ -212,6 +225,7 @@ OPENAI_API_KEY=your-api-key-here
 # TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 # SHODAN_API_KEY=your-shodan-key
 # VIRUSTOTAL_API_KEY=your-virustotal-key
+# KEMI_MCP_ALLOW_EXECUTION=1
 ENVEOF
         info "Default .env created at ${INSTALL_DIR}/.env"
         warn "Edit ${INSTALL_DIR}/.env and add your API keys!"
@@ -224,9 +238,11 @@ ENVEOF
     python3 -c "
 import kemi_claw.tools.env_control
 import kemi_claw.core.general_agent
+import kemi_claw.mcp_server
 from kemi_claw.tools.mcp_registry import registry
-print('✅ Kemi-Claw v6.1 installed successfully!')
+print('✅ Kemi-Claw v6.2 installed successfully!')
 print(f'🔧 {len(registry.manifest())} tools available')
+print('🔌 MCP server available: kemi mcp')
 " || warn "Some imports failed — check dependencies"
 
     echo ""
@@ -238,10 +254,11 @@ print(f'🔧 {len(registry.manifest())} tools available')
     echo -e "    1. Edit your API key: ${CYAN}nano ~/.kemi/.env${NC}"
     echo -e "    2. Start the server:  ${CYAN}kemi start${NC}"
     echo -e "    3. Open dashboard:    ${CYAN}http://localhost:8000/dashboard${NC}"
-    echo -e "    4. Run a scan:        ${CYAN}kemi scan example.com${NC}"
+    echo -e "    4. Run a scan:        ${CYAN}kemi scan example.com authorized${NC}"
     echo -e "    5. General agent:     ${CYAN}kemi agent search for AI news${NC}"
-    echo -e "    6. Pentest lab:       ${CYAN}kemi pentest${NC}"
-    echo -e "    7. Run tests:         ${CYAN}kemi test${NC}"
+    echo -e "    6. MCP:               ${CYAN}kemi mcp${NC}"
+    echo -e "    7. Pentest lab:       ${CYAN}kemi pentest${NC}"
+    echo -e "    8. Run tests:         ${CYAN}kemi test${NC}"
     echo ""
     echo -e "  ${BOLD}Docs:${NC} ${CYAN}https://github.com/amiraanime500-crypto/kemi-claw-v4${NC}"
     echo ""
