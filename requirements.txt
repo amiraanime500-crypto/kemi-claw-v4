@@ -14,3 +14,5 @@ ddgs
 dnspython
 python-whois
 flower
+# MCP stdio server (ported conceptually from Hermes Agent's MCP surface)
+mcp==1.26.0
