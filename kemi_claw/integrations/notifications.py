@@ -11,7 +11,7 @@ async def discord_webhook(message: str, webhook_url: str = None) -> dict:
         return {"error": "No Discord webhook URL provided. Set DISCORD_WEBHOOK_URL env var."}
     try:
         async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.post(url, json={"content": f"**[Kemi v6.1]** {message}"})
+            r = await c.post(url, json={"content": f"**[Kemi v7.0]** {message}"})
             return {"sent": r.status_code == 204, "status": r.status_code}
     except Exception as e:
         return {"error": str(e)}
@@ -91,7 +91,7 @@ async def slack_notify(message: str, webhook_url: str = None) -> dict:
         return {"error": "No Slack webhook URL"}
     try:
         async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.post(url, json={"text": f"[Kemi v6.1] {message}"})
+            r = await c.post(url, json={"text": f"[Kemi v7.0] {message}"})
             return {"sent": r.status_code == 200}
     except Exception as e:
         return {"error": str(e)}

@@ -4,7 +4,7 @@ from ..config import settings
 from ..models.llm_provider import LLMProvider
 from ..models.multi_model import get_current
 from ..tools.mcp_registry import registry
-from ..skills.tool_bridge import SkillToolBridge
+from ..skills.tool_bridge import ToolSkillBridge
 from ..cognition.orchestrator import CognitiveOrchestrator
 import kemi_claw.tools.builtin_tools
 import kemi_claw.tools.vuln_scanner
@@ -43,7 +43,7 @@ class KemiClawAgent:
         self.brain = Brain()
         self.planner = Planner(self.llm, self.brain)
         self.cognition = CognitiveOrchestrator(self.brain)
-        self.skill_bridge = SkillToolBridge()
+        self.skill_bridge = ToolSkillBridge()
         self.session = str(uuid.uuid4())
 
     async def _exec_step(self, target, step):
@@ -69,30 +69,84 @@ class KemiClawAgent:
 
     async def run(self, goal, target, authorized=False):
         if settings.require_scope_confirmation and not authorized:
-            return {"error": "Refused: target authorization not confirmed."}
+            return {
+                "error": "Refused: target authorization not confirmed.",
+                "authorization_required": True,
+            }
         all_results = []
-        self.cognition.before_task(goal, target)
+        seen_steps = set()
+        # Cognition is advisory and should not become an accidental execution
+        # bypass.  It is safe to continue if an optional strategy hook fails.
+        try:
+            self.cognition.before_task(goal, target)
+        except Exception:
+            pass
         dash_start(self.session, target, goal)
         await ws_broadcast("scan_start", {"session": self.session, "target": target, "goal": goal})
         try:
             for _ in range(settings.max_planner_retries):
-                plan = await self.planner.make_plan(goal, target, registry.manifest(), prior=all_results)
-                steps = plan.get("steps", [])
+                remaining = max(settings.max_total_steps - len(all_results), 0)
+                if not remaining:
+                    break
+                plan = await self.planner.make_plan(
+                    goal, target, registry.manifest(), prior=all_results
+                )
+                steps = plan.get("steps", [])[:remaining]
                 if not steps:
                     break
+                executed_this_round = 0
                 for step in steps:
+                    signature = repr((step.get("tool"), step.get("args", {})))
+                    # A provider can return the same plan after a replan.  Do
+                    # not waste the operator's bounded budget on duplicates.
+                    if signature in seen_steps:
+                        continue
+                    seen_steps.add(signature)
                     all_results.append(await self._exec_step(target, step))
+                    executed_this_round += 1
+                if not executed_this_round:
+                    break
                 decision = await self.planner.evaluate(goal, all_results)
                 if decision.get("decision") == "done":
                     break
-            self.cognition.after_task(goal, all_results)
+            try:
+                lesson = self.cognition.after_task(goal, all_results)
+            except Exception:
+                lesson = None
             report = build_report(self.session, goal, target, all_results)
-            return {"session": self.session, "results": all_results, "report": report}
+            self.brain.remember(
+                self.session, target, "final", {
+                    "goal": goal,
+                    "steps": len(all_results),
+                    "lesson": lesson,
+                },
+            )
+            return {
+                "session": self.session,
+                "mode": "authorized_security",
+                "authorization_confirmed": True,
+                "results": all_results,
+                "report": report,
+            }
         except Exception as exc:
             all_results.append({"step": None, "result": {"error": str(exc)}})
-            return {"session": self.session, "results": all_results, "error": str(exc)}
+            return {
+                "session": self.session,
+                "mode": "authorized_security",
+                "authorization_confirmed": True,
+                "results": all_results,
+                "error": str(exc),
+            }
         finally:
-            errors = sum(1 for r in all_results if isinstance(r.get("result"), dict) and "error" in r["result"])
+            errors = sum(
+                1
+                for r in all_results
+                if isinstance(r.get("result"), dict) and "error" in r["result"]
+            )
             rate = (len(all_results) - errors) / max(len(all_results), 1) * 100
-            vulns = sum(1 for r in all_results if isinstance(r.get("result"), dict) and r["result"].get("vulnerable"))
+            vulns = sum(
+                1
+                for r in all_results
+                if isinstance(r.get("result"), dict) and r["result"].get("vulnerable")
+            )
             dash_done(self.session, rate, vulns)

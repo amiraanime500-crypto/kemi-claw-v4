@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 
-VERSION = "6.2.0"
+VERSION = "7.0.0"
 
 @dataclass
 class Settings:
@@ -20,5 +20,7 @@ class Settings:
     api_key: str = os.getenv("KEMI_API_KEY", "")
     step_timeout: int = int(os.getenv("KEMI_STEP_TIMEOUT", "180"))
     max_plan_steps: int = int(os.getenv("KEMI_MAX_PLAN_STEPS", "12"))
+    max_total_steps: int = int(os.getenv("KEMI_MAX_TOTAL_STEPS", "24"))
+    dashboard_refresh_seconds: int = int(os.getenv("KEMI_DASHBOARD_REFRESH_SECONDS", "5"))
 
 settings = Settings()

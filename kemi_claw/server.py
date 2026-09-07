@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field, field_validator
 from kemi_claw.core.agent import KemiClawAgent
 from kemi_claw.dashboard.live import register_ws, unregister_ws, DASHBOARD_HTML, get_dashboard_state
@@ -59,14 +59,62 @@ class RunRequest(BaseModel):
             raise ValueError("target credentials are not allowed")
         return value
 
+@app.get("/", include_in_schema=False)
+async def root():
+    """Make the live preview open the command center by default."""
+    return RedirectResponse(url="/dashboard")
+
+
 @app.get("/health")
 async def health():
     from kemi_claw.models.multi_model import get_current
     from kemi_claw.tools.mcp_registry import registry
     cfg = get_current()
-    return {"status": "ok", "agent": "Kemi-Claw", "version": VERSION,
-            "tools_count": len(registry.manifest()),
-            "features": ["web_search","browser","scheduler","threat_intel","auth_scanner","nvd_correlator","proxy_manager","live_dashboard","multi_model","dir_bruteforce","tech_detect","waf_detect","sensitive_scan","dns_enum","integrations"]}
+    return {
+        "status": "ok",
+        "agent": "Kemi-Claw",
+        "version": VERSION,
+        "tools_count": len(registry.manifest()),
+        "provider": cfg["provider"],
+        "features": [
+            "web_search", "browser", "scheduler", "threat_intel",
+            "auth_scanner", "nvd_correlator", "proxy_manager",
+            "live_dashboard", "multi_model", "dir_bruteforce",
+            "tech_detect", "waf_detect", "sensitive_scan", "dns_enum",
+            "integrations",
+        ],
+        "safety": {
+            "scope_confirmation": settings.require_scope_confirmation,
+            "max_plan_steps": settings.max_plan_steps,
+            "max_total_steps": settings.max_total_steps,
+        },
+    }
+
+
+@app.get("/capabilities")
+async def capabilities(_=Depends(require_api_key)):
+    """Return non-secret data used to populate the command center."""
+    from kemi_claw.models.multi_model import get_current, list_providers
+    from kemi_claw.tools.mcp_registry import registry
+
+    return {
+        "agent": "Kemi-Claw",
+        "version": VERSION,
+        "mode": "authorized_security",
+        "tools": registry.manifest(),
+        "providers": list_providers(),
+        "current_provider": get_current()["provider"],
+        "limits": {
+            "max_plan_steps": settings.max_plan_steps,
+            "max_total_steps": settings.max_total_steps,
+            "step_timeout_seconds": settings.step_timeout,
+        },
+        "controls": {
+            "scope_confirmation_required": settings.require_scope_confirmation,
+            "api_key_required": bool(settings.api_key),
+        },
+    }
+
 
 @app.post("/run")
 async def run(req: RunRequest, _=Depends(require_api_key)):

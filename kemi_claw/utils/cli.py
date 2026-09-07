@@ -54,7 +54,7 @@ class KemiTable:
 
 def print_scan_header(target, goal, tools_count):
     print(f"{Colors.CYAN}{'='*60}{Colors.RESET}")
-    print(f"{Colors.BOLD}🐺 KEMI-CLAW v6.1 — Security Scan{Colors.RESET}")
+    print(f"{Colors.BOLD}🐺 KEMI-CLAW v7.0 — Security Scan{Colors.RESET}")
     print(f"{'='*60}")
     print(f"  Target: {Colors.BOLD}{target}{Colors.RESET}")
     print(f"  Goal:   {Colors.DIM}{goal}{Colors.RESET}")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kemi-Claw v6.2 live integration checks (explicit opt-in required)."""
+"""Kemi-Claw v7.0 live integration checks (explicit opt-in required)."""
 import asyncio, json, os, sys, time, traceback
 from datetime import datetime
 
@@ -35,7 +35,7 @@ async def t01(): x=__import__("kemi_claw.server").server; return x.app is not No
 test("Server module loads", t01)
 
 async def t02():
-    from kemi_claw.server import app; return app.title == "Kemi-Claw v6.2.0"
+    from kemi_claw.server import app; return app.title == "Kemi-Claw v7.0.0"
 test("App title correct", t02)
 
 async def t03():
