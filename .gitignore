@@ -9,3 +9,6 @@ build/
 dist/
 .coverage
 htmlcov/
+# Local Python environments and Hermes credentials/session data
+.venv/
+.hermes/

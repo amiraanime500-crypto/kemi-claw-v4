@@ -85,6 +85,32 @@ export KEMI_API_KEY=mykey
 uvicorn kemi_claw.server:app --reload
 ```
 
+## Hermes Agent (optional, separate installation)
+
+Install the official [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent)
+alongside Kemi-Claw, with its own Python environment:
+
+```bash
+bash scripts/install_hermes.sh
+export PATH="$HOME/.local/bin:$PATH"
+hermes setup                  # choose a model provider in your terminal
+hermes                        # start chatting after authentication
+```
+
+Requires Git and Python 3.11–3.13 with `venv`/`pip`. The installer pins release
+`v2026.8.31` (Hermes `0.21.0`), verifies its Git commit, and installs its Python
+`[all]` extra under `~/.local/share/hermes-agent/`. Configuration, credentials,
+and sessions stay in `~/.hermes/`, outside this repository. Existing configuration
+is preserved on re-runs; unrelated or modified checkouts are refused.
+
+This does **not** replace Kemi, change its dependencies, connect its MCP tools,
+or start a gateway/service. Browser engines, desktop builds, and messaging
+integrations are not provisioned by this helper. Model authentication still
+requires `hermes setup`; do not put credentials in Git or chat.
+
+See [دليل تثبيت Hermes وإعداده](docs/hermes.md) for verification, custom paths,
+and troubleshooting.
+
 ## Run a single task
 
 ```bash
