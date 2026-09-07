@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 BANNER = r"""
 ╔══════════════════════════════════════════════════╗
-║  🐺  Kemi-Claw v6.1 — Interactive Shell        ║
+║  🐺  Kemi-Claw v7.0 — Interactive Shell        ║
 ║  Type 'help' for commands, 'exit' to quit       ║
 ╚══════════════════════════════════════════════════╝"""
 

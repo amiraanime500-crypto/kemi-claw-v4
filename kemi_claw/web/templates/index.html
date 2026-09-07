@@ -1,60 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kemi-Claw Dashboard</title>
+  <meta name="theme-color" content="#08111f">
+  <title>Kemi // Operations Desk</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--bg:#08111f;--panel:#102039;--panel2:#0c192d;--line:rgba(157,190,227,.15);--text:#f2f7ff;--muted:#8fa6c0;--cyan:#6be7df;--blue:#8ab4ff;--green:#79e2a8;--amber:#f3c472;--red:#ff8f9c}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(circle at 84% 0,rgba(107,148,255,.16),transparent 34rem),var(--bg)}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}.shell{max-width:1300px;margin:auto;padding:24px 20px 60px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}.brand{display:flex;align-items:center;gap:12px}.mark{width:45px;height:45px;border-radius:15px;display:grid;place-items:center;color:#06111d;font-weight:900;background:linear-gradient(140deg,var(--cyan),var(--blue),#b99cff);box-shadow:0 12px 30px #6be7df26}.brand h1{font-size:19px;margin:0}.brand p{font-size:11px;color:var(--muted);margin:3px 0 0;letter-spacing:.12em;text-transform:uppercase}.session{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px #ff8f9c16}.dot.live{background:var(--green);box-shadow:0 0 0 4px #79e2a816}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.card,.panel{border:1px solid var(--line);border-radius:18px;background:rgba(16,32,57,.8);box-shadow:0 20px 65px #00000018}.card{padding:18px}.label{font-size:12px;color:var(--muted)}.value{font-size:28px;font-weight:850;margin-top:11px;letter-spacing:-.04em}.hint{font-size:11px;color:#607995;margin-top:3px}
+    .columns{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:18px;align-items:start}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-title{font-weight:800;font-size:15px}.panel-sub{color:var(--muted);font-size:12px;line-height:1.6;margin-top:4px}.panel-body{padding:20px}
+    .hero{padding:25px;border:1px solid #8ab4ff33;border-radius:21px;background:linear-gradient(135deg,#173253d9,#0f2139b8);margin-bottom:18px}.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.15em}.hero h2{margin:10px 0;font-size:clamp(24px,4vw,40px);letter-spacing:-.04em}.hero p{max-width:700px;color:#b5c9e4;line-height:1.8;font-size:13px;margin:0}.tag{display:inline-flex;padding:6px 9px;border-radius:999px;color:#b9d1eb;background:#8ab4ff0e;border:1px solid var(--line);font-size:10px;margin:17px 5px 0 0}
+    .field{display:grid;gap:7px;margin-bottom:14px}label{font-size:12px;font-weight:700;color:#b8cbe3}input,textarea,select{width:100%;background:#040e198f;border:1px solid #9dbde333;border-radius:11px;color:var(--text);outline:0;padding:11px 12px}textarea{min-height:82px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:#6be7df99;box-shadow:0 0 0 3px #6be7df14}.check{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #f3c47233;background:#f3c4720a;border-radius:12px;margin:10px 0 17px}.check input{width:17px;height:17px;margin-top:1px;accent-color:var(--cyan)}.check strong{display:block;color:#f6d38c;font-size:12px;margin-bottom:4px}.check span{color:#b8a77f;font-size:11px;line-height:1.6}.actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.primary,.ghost{border-radius:11px;padding:10px 14px;border:1px solid #9dbde344;color:var(--text);background:#10213aa8}.primary{color:#07111e;background:linear-gradient(135deg,#55cfc8,#779df8);border-color:#6be7df77;font-weight:800}.primary:disabled{opacity:.5;cursor:wait}.ghost:hover{border-color:#6be7df88}.helper{color:#67809b;font-size:11px;line-height:1.7}
+    .status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#79e2a812;color:var(--green);font-size:10px;font-weight:800}.status.warn{color:var(--amber);background:#f3c47212}.rules{display:grid;gap:12px}.rule{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.rule:last-child{border-bottom:0}.rule i{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:var(--cyan);background:#6be7df14;font-style:normal}.rule strong{font-size:12px}.rule p{color:var(--muted);font-size:11px;line-height:1.6;margin:4px 0 0}
+    .section{margin-top:28px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.section h2{font-size:18px;margin:0}.section-head p{color:var(--muted);font-size:12px;margin:5px 0 0}.table{overflow:auto}.table table{width:100%;min-width:620px;border-collapse:collapse}.table th,.table td{padding:13px 15px;text-align:right;border-bottom:1px solid var(--line);font-size:12px;white-space:nowrap}.table th{color:#67809b;font-size:11px}.table td{color:#c6d6e9}.table tr:last-child td{border-bottom:0}.empty{text-align:center;color:#67809b;padding:27px;border:1px dashed #9dbde333;border-radius:14px;font-size:12px}.ltr{direction:ltr;text-align:right}.toast{position:fixed;left:22px;bottom:22px;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;padding:12px 14px;border-radius:12px;border:1px solid #9dbde344;background:#112844;color:var(--text);font-size:12px;z-index:4}.toast.show{opacity:1;transform:none}.toast.error{border-color:#ff8f9c77;color:#ffd4d9}
+    @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}}@media(max-width:530px){.shell{padding:17px 13px 42px}header{align-items:flex-start}.session{font-size:10px}.grid{gap:8px}.card{padding:13px}.value{font-size:22px}.hero{padding:20px}.actions{align-items:stretch;flex-direction:column}.actions button{width:100%}}
+  </style>
 </head>
 <body>
-  <h1>Kemi-Claw — لوحة التحكم</h1>
-
-  <h2>تسجيل الدخول</h2>
-  <form id="loginForm">
-    <input id="u" placeholder="username" />
-    <input id="p" type="password" placeholder="password" />
-    <button type="submit">login</button>
-  </form>
-
-  <h2>إطلاق دفعة أهداف</h2>
-  <form id="batchForm">
-    <input id="goal" placeholder="goal" />
-    <textarea id="targets" placeholder="one target per line"></textarea>
-    <button type="submit">launch</button>
-  </form>
-  <pre id="out"></pre>
-
+  <div class="shell">
+    <header><div class="brand"><div class="mark">K</div><div><h1>Kemi Operations Desk</h1><p>authorization-gated command center</p></div></div><div class="session"><i class="dot" id="dot"></i><span id="sessionText">غير مسجل</span></div></header>
+    <section class="hero"><div class="eyebrow">KEMI // TEAM CONTROL PLANE</div><h2>شغّل بوضوح.<br>راجع كل خطوة.</h2><p>واجهة تشغيل للفرق: دخول RBAC، تشغيل دفعات متعددة الأهداف، طابور مهام، وسجل جلسات قابل للمراجعة. لا يتم تجاوز التفويض من الواجهة.</p><span class="tag">RBAC</span><span class="tag">Audit trail</span><span class="tag">Celery queue</span></section>
+    <section class="grid"><div class="card"><div class="label">المستخدم</div><div class="value" id="userValue">—</div><div class="hint" id="roleValue">سجّل الدخول للبدء</div></div><div class="card"><div class="label">جلسات محفوظة</div><div class="value" id="sessionCount">—</div><div class="hint">من الذاكرة المستمرة</div></div><div class="card"><div class="label">إصدار Kemi</div><div class="value" id="versionValue">—</div><div class="hint">control plane</div></div><div class="card"><div class="label">حالة التفويض</div><div class="value" style="font-size:20px;color:var(--green)">نشطة</div><div class="hint">مطلوبة لكل دفعة</div></div></section>
+    <section class="columns"><div class="panel"><div class="panel-head"><div><div class="panel-title">تسجيل الدخول</div><div class="panel-sub">احصل على جلسة JWT قصيرة العمر حسب الدور.</div></div><span class="status" id="authStatus">OFFLINE</span></div><div class="panel-body"><form id="loginForm"><div class="field"><label for="username">اسم المستخدم</label><input id="username" autocomplete="username" required></div><div class="field"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div><div class="actions"><span class="helper">لا يتم إرسال كلمة المرور إلا إلى مسار تسجيل الدخول.</span><button class="primary" type="submit" id="loginButton">تسجيل الدخول</button></div></form></div></div><div class="panel"><div class="panel-head"><div><div class="panel-title">ثلاثة ثوابت</div><div class="panel-sub">قدرة عملية بدون مفاجآت.</div></div></div><div class="panel-body rules"><div class="rule"><i>✓</i><div><strong>أقل صلاحية</strong><p>المشاهد يقرأ، المشغّل يشغّل، والمدير يدير المستخدمين.</p></div></div><div class="rule"><i>⌁</i><div><strong>أثر قابل للتدقيق</strong><p>كل دفعة تحمل صاحبها ومعرف مهمة ونتيجة طابور واضحة.</p></div></div><div class="rule"><i>!</i><div><strong>النطاق أولاً</strong><p>لا تبدأ دفعة إلا مع تأكيد صريح على التفويض.</p></div></div></div></div></section>
+    <section class="section"><div class="section-head"><div><h2>إطلاق دفعة</h2><p>للمشغّل أو المدير فقط. استخدم أهدافاً مصرحاً بها.</p></div><span class="status warn">AUTHORIZATION REQUIRED</span></div><div class="panel"><div class="panel-body"><form id="batchForm"><div class="field"><label for="goal">الهدف</label><textarea id="goal" placeholder="مثال: جرد السطح العام للمواقع ضمن النطاق…" required minlength="3"></textarea></div><div class="field"><label for="targets">الأهداف — هدف واحد في كل سطر</label><textarea id="targets" placeholder="https://target-one.example
+https://target-two.example" required></textarea></div><label class="check"><input id="authorized" type="checkbox" required><span><strong>أؤكد وجود تفويض كتابي لكل هدف</strong><span>التأكيد لا يلغي ضرورة وجود نطاق تعاقدي وضوابط شبكة مناسبة.</span></span></label><div class="actions"><span class="helper">الحد الأقصى 20 هدفاً لكل دفعة.</span><button class="primary" id="batchButton" type="submit">إرسال إلى الطابور →</button></div></form></div></div></section>
+    <section class="section"><div class="section-head"><div><h2>آخر الجلسات</h2><p>نتائج الذاكرة المشتركة حسب صلاحيتك.</p></div><button class="ghost" id="refreshButton">تحديث</button></div><div class="panel table"><table><thead><tr><th>الهدف</th><th>النوع</th><th>التاريخ</th><th>الأثر</th></tr></thead><tbody id="sessionsBody"></tbody></table><div class="empty" id="emptySessions" style="display:none">سجّل الدخول لرؤية الجلسات.</div></div></section>
+  </div>
+  <div class="toast" id="toast"></div>
   <script>
-    document.getElementById('loginForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const r = await fetch('/auth/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          username: document.getElementById('u').value,
-          password: document.getElementById('p').value
-        })
-      });
-      const data = await r.json();
-      if (data.access_token) localStorage.setItem('kemi_token', data.access_token);
-      document.getElementById('out').textContent = JSON.stringify(data, null, 2);
-    };
-
-    document.getElementById('batchForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const goal = document.getElementById('goal').value;
-      const targets = document.getElementById('targets')
-                       .value.split('\n').filter(Boolean);
-      const r = await fetch('/api/batch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + (localStorage.getItem('kemi_token') || '')
-        },
-        body: JSON.stringify({goal, targets})
-      });
-      document.getElementById('out').textContent =
-        JSON.stringify(await r.json(), null, 2);
-    };
+    const $=id=>document.getElementById(id);let toastTimer;
+    function token(){return localStorage.getItem('kemi_rbac_token')||''} function notify(message,error=false){const el=$('toast');el.textContent=message;el.className='toast show'+(error?' error':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='toast',3500)}
+    function authHeaders(){return token()?{'Authorization':'Bearer '+token()}:{} }
+    async function call(path,options={}){const response=await fetch(path,Object.assign({},options,{headers:Object.assign({},authHeaders(),options.headers||{})}));let body={};try{body=await response.json()}catch(_){ }if(!response.ok)throw new Error(body.detail||('HTTP '+response.status));return body}
+    function setLoggedIn(user){$('dot').className='dot live';$('sessionText').textContent='متصل · '+(user.username||'');$('authStatus').textContent='ONLINE';$('authStatus').className='status';$('userValue').textContent=user.username||'—';$('roleValue').textContent='role: '+(user.role||'viewer')}
+    function setLoggedOut(message='غير مسجل'){$('dot').className='dot';$('sessionText').textContent=message;$('authStatus').textContent='OFFLINE';$('authStatus').className='status warn';$('userValue').textContent='—';$('roleValue').textContent='سجّل الدخول للبدء'}
+    async function loadSessions(){if(!token()){setLoggedOut();$('sessionsBody').replaceChildren();$('emptySessions').style.display='block';return}try{const [user,sessions]=await Promise.all([call('/auth/me'),call('/api/sessions')]);setLoggedIn(user);$('sessionCount').textContent=sessions.length;$('versionValue').textContent='7.x';const body=$('sessionsBody');body.replaceChildren();sessions.slice(0,12).forEach(item=>{const row=document.createElement('tr');[item.target||'—',item.kind||'—',new Date((item.at||0)*1000).toLocaleString(),JSON.stringify(item.content||{}).slice(0,80)].forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===0)td.className='ltr';row.appendChild(td)});body.appendChild(row)});$('emptySessions').style.display=sessions.length?'none':'block'}catch(error){localStorage.removeItem('kemi_rbac_token');setLoggedOut('انتهت الجلسة');notify(error.message,true)}}
+    $('loginForm').addEventListener('submit',async event=>{event.preventDefault();const button=$('loginButton');button.disabled=true;button.textContent='جارٍ الدخول…';try{const result=await call('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value,password:$('password').value})});localStorage.setItem('kemi_rbac_token',result.access_token);notify('تم تسجيل الدخول بدور '+result.role);await loadSessions()}catch(error){notify(error.message,true)}finally{button.disabled=false;button.textContent='تسجيل الدخول'}});
+    $('batchForm').addEventListener('submit',async event=>{event.preventDefault();if(!token()){notify('سجّل الدخول أولاً',true);return}const button=$('batchButton');button.disabled=true;button.textContent='جارٍ الإرسال…';try{const targets=$('targets').value.split(/\n+/).map(x=>x.trim()).filter(Boolean);const result=await call('/api/batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({goal:$('goal').value.trim(),targets,authorized:$('authorized').checked})});notify('تم إنشاء المهمة '+result.batch_task_id.slice(0,8));$('goal').value='';$('targets').value='';$('authorized').checked=false;await loadSessions()}catch(error){notify(error.message,true)}finally{button.disabled=false;button.textContent='إرسال إلى الطابور →'}});
+    $('refreshButton').addEventListener('click',loadSessions);loadSessions();
   </script>
 </body>
 </html>

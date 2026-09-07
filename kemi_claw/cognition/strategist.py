@@ -11,3 +11,7 @@ class CognitiveStrategist:
             {"strategy": "safe", "goal": goal, "context": context},
             {"strategy": "optimized", "goal": goal, "context": context},
         ]
+
+    # Backwards-compatible name used by older integrations.
+    def create_strategies(self, goal: str, target: str) -> List[Dict[str, Any]]:
+        return self.generate(goal, {"target": target})

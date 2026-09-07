@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kemi-claw"
-version = "6.2.0"
-description = "Kemi-Claw — authorized offensive-security AI agent (planner, persistent memory, MCP tools, queue, RBAC dashboard)."
+version = "7.0.0"
+description = "Kemi-Claw — an evidence-first, authorization-gated AI operations agent with a live command center."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -26,6 +26,7 @@ dependencies = [
     "dnspython",
     "python-whois",
     "flower",
+    "mcp==1.26.0",
 ]
 
 [project.optional-dependencies]

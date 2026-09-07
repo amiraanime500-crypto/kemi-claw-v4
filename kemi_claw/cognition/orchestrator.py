@@ -13,10 +13,25 @@ class CognitiveOrchestrator:
         self.learner = CognitiveLearner()
 
     def before_task(self, goal, target):
-        return self.strategist.create_strategies(goal, target)
+        """Prepare strategies without making execution depend on optional hooks.
+
+        The cognition layer is deliberately advisory: a missing or malformed
+        strategy must never bypass the authorization gate or stop an otherwise
+        valid run.  Keeping the lifecycle here small also makes it easy to
+        exercise in deterministic benchmark runs.
+        """
+        context = {"target": target}
+        generator = getattr(self.strategist, "create_strategies", None)
+        if generator is not None:
+            return generator(goal, target)
+        return self.strategist.generate(goal, context)
 
     def after_task(self, goal, results):
-        review = self.critic.review(goal, results)
-        lesson = self.learner.learn(review)
+        """Review a run and persist a compact, reusable lesson."""
+        # CognitiveCritic's public signature is (result, goal).  Use the
+        # keyword form so a future refactor cannot silently swap the values.
+        review = self.critic.review(result=results, goal=goal)
+        extractor = getattr(self.learner, "learn", None)
+        lesson = extractor(review) if extractor is not None else self.learner.extract(review)
         self.brain.remember(None, goal, "cognitive_lesson", lesson)
         return lesson

@@ -1,4 +1,4 @@
-# Kemi v6.1 — Agent Context
+# Kemi v7.0 — Agent Context
 
 ## Mission
 Full-spectrum offensive security: recon + vuln scanning + threat intel + NVD correlation + auth scanning + live dashboard.

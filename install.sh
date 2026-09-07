@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# Kemi-Claw v6.2.0 — One-Line Installer
+# Kemi-Claw v7.0.0 — One-Line Installer
 # curl -fsSL https://raw.githubusercontent.com/amiraanime500-crypto/kemi-claw-v4/main/install.sh | bash
 # ============================================================
 set -euo pipefail
@@ -9,7 +9,7 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 
-KEMI_VERSION="6.2.0"
+KEMI_VERSION="7.0.0"
 INSTALL_DIR="${HOME}/.kemi"
 REPO_URL="https://github.com/amiraanime500-crypto/kemi-claw-v4.git"
 
@@ -76,7 +76,7 @@ create_launcher() {
 
     cat > "${LAUNCHER}" << 'LAUNCHEREOF'
 #!/usr/bin/env bash
-# Kemi-Claw v6.2.0 Launcher
+# Kemi-Claw v7.0.0 Launcher
 KEMI_HOME="${HOME}/.kemi"
 cd "${KEMI_HOME}"
 
@@ -179,7 +179,7 @@ asyncio.run(main())"
         ls -la
         ;;
     *)
-        echo "Kemi-Claw v6.2.0 — Authorized Security AI Agent"
+        echo "Kemi-Claw v7.0.0 — Authorized Security AI Agent"
         echo ""
         echo "Commands:"
         echo "  kemi start         Start the server (http://localhost:8000)"
@@ -218,7 +218,7 @@ finalize() {
     # Create default .env if not exists
     if [[ ! -f "${INSTALL_DIR}/.env" ]]; then
         cat > "${INSTALL_DIR}/.env" << 'ENVEOF'
-# Kemi-Claw v6.1 Configuration
+# Kemi-Claw v7.0 Configuration
 KEMI_MODEL_PROVIDER=nvidia
 KEMI_MODEL_NAME=meta/llama-3.1-8b-instruct
 OPENAI_API_KEY=your-api-key-here
@@ -240,7 +240,7 @@ import kemi_claw.tools.env_control
 import kemi_claw.core.general_agent
 import kemi_claw.mcp_server
 from kemi_claw.tools.mcp_registry import registry
-print('✅ Kemi-Claw v6.2 installed successfully!')
+print('✅ Kemi-Claw v7.0 installed successfully!')
 print(f'🔧 {len(registry.manifest())} tools available')
 print('🔌 MCP server available: kemi mcp')
 " || warn "Some imports failed — check dependencies"

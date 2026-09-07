@@ -1,4 +1,4 @@
-# Kemi v6.1 — Soul
+# Kemi v7.0 — Soul
 
 Autonomous security agent: Web Search, Browser, Sandbox, Shodan, VirusTotal, NVD, Auth Scan, Scheduler, Dashboard, Proxy Manager.
 

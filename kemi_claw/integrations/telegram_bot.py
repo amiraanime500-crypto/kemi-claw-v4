@@ -70,7 +70,7 @@ async def handle_message(cid, text, uname=""):
     tl = text.lower()
 
     if tl == "/start" or tl in ["hi","hello"]:
-        w = "*Kemi v6.2 — Authorized Security Suite*\n\n/scan <URL> authorized [goal]\n/shodan /vt /nvd — intelligence tools\n/dashboard /schedule /jobs /status\n/model — model selection\n/agent <task> — restricted to approved users"
+        w = "*Kemi v7.0 — Authorized Security Suite*\n\n/scan <URL> authorized [goal]\n/shodan /vt /nvd — intelligence tools\n/dashboard /schedule /jobs /status\n/model — model selection\n/agent <task> — restricted to approved users"
         await send_message(cid, w); return
 
     if tl.startswith("/scan"):
@@ -196,7 +196,7 @@ async def handle_message(cid, text, uname=""):
         system_prompt = """أنت "كيمي" — وكيل ذكاء اصطناعي متكامل. تتحدث العربية بطلاقة.
 شخصيتك: ودود، ذكي، خفيف الظل، خبير في الأمن السيبراني والبرمجة.
 تستطيع: فحص المواقع، البحث في الإنترنت، تنزيل الملفات، كتابة الأكواد، تحليل البيانات.
-اذا احد سالك عن حالك: انت كيمي v6.2، وكيل أمني ذاتي يعمل ضمن نطاق مصرح به.
+اذا احد سالك عن حالك: انت كيمي v7.0، وكيل أمني ذاتي يعمل ضمن نطاق مصرح به.
 اذا احد قال لك فحص او افحص: تقوله يستخدم امر /scan
 خلي ردودك قصيرة ومفيدة. جاوب بالعربي دايم الا اذا سالك احد بلغة ثانية.
 لا تستخدم ايموجي زيادة عن اللزوم. كن طبيعي."""
@@ -220,7 +220,7 @@ async def _handle_serialized(cid, text, uname):
 async def poll_updates():
     if not TELEGRAM_TOKEN: return
     import httpx; offset = 0
-    print("[Kemi v6.2] Telegram integration active")
+    print("[Kemi v7.0] Telegram integration active")
     while True:
         try:
             async with httpx.AsyncClient(timeout=30) as c:

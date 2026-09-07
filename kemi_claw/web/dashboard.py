@@ -1,10 +1,13 @@
 """Web dashboard with RBAC: sessions view, batch launch, queue status."""
+from pathlib import Path
+from urllib.parse import urlparse
+
 from celery.result import AsyncResult
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator
-from urllib.parse import urlparse
+
 from ..config import VERSION
 
 from ..auth.models import Role, User
@@ -16,7 +19,7 @@ from ..queue.tasks import run_batch
 
 app = FastAPI(title="Kemi-Claw Dashboard", version=VERSION)
 app.include_router(auth_router)
-templates = Jinja2Templates(directory="kemi_claw/web/templates")
+templates = Jinja2Templates(directory=str(Path(__file__).with_name("templates")))
 
 
 class BatchRequest(BaseModel):

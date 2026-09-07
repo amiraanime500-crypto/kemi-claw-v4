@@ -1,8 +1,8 @@
 # Kemi-Claw
 
-Current release: **v6.2.0**
+Current release: **v7.0.0**
 
-**Kemi-Claw** is an autonomous, **authorization-gated** offensive-security AI agent. It plans, executes, evaluates and re-plans security tasks against targets you are **explicitly authorized** to test. It ships with a planning brain, persistent cross-session memory, a pluggable any-LLM provider layer, MCP-style tool integration, a Client/Server API, a Celery/Redis task queue, a web dashboard, and role-based access control (RBAC).
+**Kemi-Claw** is an evidence-first, **authorization-gated** AI operations agent. It plans, executes, evaluates and re-plans security tasks against targets you are **explicitly authorized** to test. It ships with a planning brain, persistent cross-session memory, a pluggable multi-LLM provider layer, MCP-style tool integration, a Client/Server API, a Celery/Redis task queue, a live command center, and role-based access control (RBAC).
 
 > **Legal & safety notice.** Every run is guarded by `require_scope_confirmation`. The agent refuses to act unless `authorized=true` is passed for the target. Use Kemi-Claw **only** on systems you own or have explicit written permission to test (licensed pentests, authorized bug-bounty scope, or your own lab). Unauthorized use is illegal.
 
@@ -21,8 +21,10 @@ Current release: **v6.2.0**
 | **Integrations** (`integrations/`) | Private Telegram bot, Slack alerts, threat intelligence, Burp Suite scans. |
 | **Live CVE** (`knowledge/cve_live.py`) | Queries the NVD API. |
 | **Queue** (`queue/`) | Celery + Redis fan-out across workers. |
-| **Dashboard** (`web/`) | FastAPI + Jinja UI to launch batches and view sessions. |
+| **Command center** (`dashboard/`) | Modern Arabic-first live UI with WebSocket progress, run composer, tool registry, and evidence history. |
+| **Dashboard** (`web/`) | FastAPI + Jinja RBAC UI to launch batches and view sessions. |
 | **RBAC** (`auth/`) | JWT login + bcrypt; roles `viewer` / `operator` / `admin`. |
+| **Benchmark protocol** (`benchmarks/`) | Network-free, reproducible Kemi/Hermes comparison harness; reports evidence instead of unsupported multipliers. |
 
 ---
 
@@ -85,6 +87,11 @@ export KEMI_API_KEY=mykey
 uvicorn kemi_claw.server:app --reload
 ```
 
+Open `http://localhost:8000/dashboard` for the live command center. Enter the
+API key in **Settings**; it is kept in that browser's `localStorage` and sent
+only as `x-api-key`. The UI cannot disable scope confirmation: security runs
+still require an explicit authorization checkbox.
+
 ## Run a single task
 
 ```bash
@@ -141,6 +148,22 @@ python -m kemi_claw.core.autopilot "full recon" https://t1 https://t2
 | View sessions / reports | yes | yes | yes |
 | Launch tasks / batches | no | yes | yes |
 | Manage users | no | no | yes |
+
+## Evidence-based comparison
+
+The repository includes a network-free comparison protocol for Kemi and another
+agent. It uses the same safe synthetic tasks and measures pass rate, structured
+output completeness, median latency, and p95. It does not promise a multiplier
+without evidence.
+
+```bash
+python benchmarks/compare_agents.py \
+  --kemi-command 'python /path/to/kemi_adapter.py' \
+  --hermes-command 'python /path/to/hermes_adapter.py' \
+  --iterations 5 --output benchmark-results.json
+```
+
+See [`benchmarks/README.md`](benchmarks/README.md) for the adapter contract.
 
 ## Tests
 
