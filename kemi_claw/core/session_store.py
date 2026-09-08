@@ -1,4 +1,4 @@
-"""Persistent agent session storage for resumable Kemi runs."""
+"""Persistent, atomic agent session storage with bounded recall/search."""
 from __future__ import annotations
 
 import json
@@ -56,7 +56,9 @@ class SessionStore:
 
     def list(self, limit: int = 50) -> list[dict[str, Any]]:
         items = []
-        for name in os.listdir(self.root):
+        with self._lock:
+            names = list(os.listdir(self.root))
+        for name in names:
             if not name.endswith(".json"):
                 continue
             state = self.load(name[:-5])
@@ -64,6 +66,20 @@ class SessionStore:
                 items.append(state)
         items.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
         return items[: max(1, min(int(limit), 500))]
+
+    def search(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Search persisted sessions without an LLM call."""
+        terms = [term.casefold() for term in str(query).split() if term.strip()]
+        if not terms:
+            return []
+        matches = []
+        for state in self.list(500):
+            haystack = json.dumps(state, ensure_ascii=False, default=str).casefold()
+            score = sum(haystack.count(term) for term in terms)
+            if score:
+                matches.append((score, state))
+        matches.sort(key=lambda item: (item[0], item[1].get("updated_at", 0)), reverse=True)
+        return [state for _, state in matches[: max(1, min(int(limit), 100))]]
 
 
 session_store = SessionStore()
