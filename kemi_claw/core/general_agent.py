@@ -1,22 +1,24 @@
-"""General AI Agent with persistent, resumable sessions and bounded tool recovery."""
+"""General autonomous agent with bounded execution, recovery and durable sessions."""
 import json, uuid, time
 from ..models.llm_provider import LLMProvider
 from ..models.multi_model import get_current
 from ..core.honcho_memory import memory as global_memory
 from ..core.session_store import session_store
+from ..core.guardrails import ExecutionPolicy, bound_text, redact_secrets
 
 GENERAL_SYSTEM_PROMPT = """You are Kemi, a general-purpose autonomous AI agent with environment control.
-Break goals into concrete executable steps. Use only available tools and return valid JSON plans.
-Handle failures explicitly and never silently invent successful results."""
-
+Break goals into concrete executable steps. Prefer reversible actions, verify important results,
+and return valid JSON plans. Never claim success without evidence. If a step fails, diagnose it,
+adapt the plan, and preserve useful progress."""
 
 class GeneralAgent:
-    """General-purpose autonomous agent with durable, resumable sessions."""
+    """Durable agent loop with bounded planning and explicit tool policy."""
     def __init__(self, provider=None, model=None, session_id=None):
         cfg = get_current()
         self.llm = LLMProvider(provider or cfg["provider"], model or cfg["model"])
         self.session = session_id or str(uuid.uuid4())[:8]
         self.history = []
+        self.policy = ExecutionPolicy.from_env()
         saved = session_store.load(self.session)
         if saved:
             self.history = saved.get("history", [])[-50:]
@@ -32,24 +34,27 @@ class GeneralAgent:
         return await self.llm.complete(GENERAL_SYSTEM_PROMPT, messages)
 
     async def _plan_steps(self, goal: str, context: str = "") -> list:
-        prompt = f"""GOAL: {goal}
-CONTEXT: {context}
-AVAILABLE TOOLS: shell_exec, browser_navigate, browser_act, browser_extract,
-http_request, file_read, file_write, file_list, web_search, sandbox_exec,
-sys_info, pkg_install.
-Return ONLY a valid JSON array. Each item contains step, action, tool, args.
-"""
+        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nAVAILABLE TOOLS: shell_exec, browser_navigate, browser_act, browser_extract,
+http_request, file_read, file_write, file_list, web_search, sandbox_exec, sys_info, pkg_install.
+Return ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.
+Limit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
         response = await self._call_llm([{"role": "user", "content": prompt}])
         try:
             import re
             match = re.search(r"\[.*\]", response, re.DOTALL)
-            return json.loads(match.group()) if match else []
+            planned = json.loads(match.group()) if match else []
+            if not isinstance(planned, list):
+                return []
+            return planned[:self.policy.max_steps]
         except (ValueError, TypeError, json.JSONDecodeError):
             return []
 
     async def _execute_step(self, step: dict) -> dict:
         tool = step.get("tool", "")
         args = step.get("args", {}) or {}
+        allowed, reason = self.policy.check_tool(tool, args)
+        if not allowed:
+            return {"step": step, "result": {"error": reason}, "success": False, "blocked": True}
         self._import_tools()
         try:
             from kemi_claw.tools.env_control import shell_exec, file_read, file_write, file_list, file_delete, pkg_install, sys_info
@@ -74,20 +79,24 @@ Return ONLY a valid JSON array. Each item contains step, action, tool, args.
             if tool not in tool_map:
                 return {"step": step, "result": {"error": f"Unknown tool: {tool}"}, "success": False}
             result = await tool_map[tool]()
+            result = bound_text(redact_secrets(result), self.policy.max_tool_output)
             ok = not (isinstance(result, dict) and result.get("error"))
             return {"step": step, "result": result, "success": ok}
         except Exception as exc:
             return {"step": step, "result": {"error": str(exc)}, "success": False}
 
     def _persist(self, goal, user_id, steps, results, status="running"):
+        safe_results = bound_text(redact_secrets(results), self.policy.max_tool_output)
         session_store.save(self.session, {
             "session": self.session, "user_id": user_id, "goal": goal,
-            "steps": steps, "results": results, "history": self.history[-50:],
+            "steps": steps, "results": safe_results, "history": self.history[-50:],
             "status": status,
         })
 
     async def run(self, goal: str, user_id: str = "default", session_id=None, resume=True) -> dict:
         start_time = time.time()
+        if not goal or len(goal) > 4000:
+            return {"session": self.session, "goal": goal, "status": "rejected", "error": "goal must be between 1 and 4000 characters"}
         if session_id:
             self.session = session_id
         try:
@@ -95,33 +104,30 @@ Return ONLY a valid JSON array. Each item contains step, action, tool, args.
             global_memory.remember_user(user_id)
         except Exception:
             context = ""
-
         saved = session_store.load(self.session) if resume else None
         if saved and saved.get("goal") == goal and saved.get("status") != "completed":
-            steps, results = saved.get("steps", []), saved.get("results", [])
+            steps, results = saved.get("steps", [])[:self.policy.max_steps], saved.get("results", [])
         else:
             steps, results = await self._plan_steps(goal, context), []
-
         if not steps:
-            return {"session": self.session, "goal": goal, "steps_planned": 0,
-                    "steps_executed": 0, "successful": 0, "failed": 1,
-                    "elapsed_seconds": int(time.time() - start_time),
+            return {"session": self.session, "goal": goal, "steps_planned": 0, "steps_executed": 0,
+                    "successful": 0, "failed": 1, "elapsed_seconds": int(time.time() - start_time),
                     "results": [{"error": "The model did not return a valid tool plan."}]}
-
         self._persist(goal, user_id, steps, results)
         for index in range(len(results), len(steps)):
             step = steps[index]
             result = await self._execute_step(step)
-            if not result.get("success") and step.get("retry", True):
+            retries = 0
+            while not result.get("success") and step.get("retry", True) and retries < self.policy.max_retries:
+                retries += 1
                 retry = await self._execute_step(step)
                 if retry.get("success"):
-                    retry["retried"] = True
+                    retry["retried"] = retries
                     result = retry
             results.append(result)
             self._persist(goal, user_id, steps, results)
             if not result.get("success") and step.get("critical"):
                 break
-
         elapsed = time.time() - start_time
         success_count = sum(1 for r in results if r.get("success"))
         status = "completed" if len(results) == len(steps) and success_count == len(steps) else "partial"
