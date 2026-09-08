@@ -5,20 +5,25 @@ from ..models.multi_model import get_current
 from ..core.honcho_memory import memory as global_memory
 from ..core.session_store import session_store
 from ..core.guardrails import ExecutionPolicy, bound_text, redact_secrets
+from ..core.trajectory import TrajectoryRecorder
+from ..skills.manager import SkillManager
 
 GENERAL_SYSTEM_PROMPT = """You are Kemi, a general-purpose autonomous AI agent with environment control.
 Break goals into concrete executable steps. Prefer reversible actions, verify important results,
 and return valid JSON plans. Never claim success without evidence. If a step fails, diagnose it,
-adapt the plan, and preserve useful progress."""
+adapt the plan, and preserve useful progress. Reuse relevant proven skills when available."""
+
 
 class GeneralAgent:
-    """Durable agent loop with bounded planning and explicit tool policy."""
+    """Durable agent loop with bounded planning, recall, skills and recovery."""
     def __init__(self, provider=None, model=None, session_id=None):
         cfg = get_current()
         self.llm = LLMProvider(provider or cfg["provider"], model or cfg["model"])
         self.session = session_id or str(uuid.uuid4())[:8]
         self.history = []
         self.policy = ExecutionPolicy.from_env()
+        self.trajectory = TrajectoryRecorder()
+        self.skills = SkillManager(".kemi/skills.json")
         saved = session_store.load(self.session)
         if saved:
             self.history = saved.get("history", [])[-50:]
@@ -34,7 +39,20 @@ class GeneralAgent:
         return await self.llm.complete(GENERAL_SYSTEM_PROMPT, messages)
 
     async def _plan_steps(self, goal: str, context: str = "") -> list:
-        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nAVAILABLE TOOLS: shell_exec, browser_navigate, browser_act, browser_extract,
+        relevant = self.skills.relevant(goal, limit=5)
+        skill_context = "\n".join(
+            f"- {s.name}: {s.description} (success={s.success_rate:.0%}, score={s.score:.2f})"
+            for s in relevant
+        ) or "- none"
+        try:
+            recalled = session_store.search(goal, limit=5)
+            recall_context = "\n".join(
+                f"- session={item.get('session')}, status={item.get('status')}, goal={item.get('goal')}"
+                for item in recalled
+            ) or "- none"
+        except Exception:
+            recall_context = "- unavailable"
+        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nRELEVANT PROVEN SKILLS:\n{skill_context}\nRELATED PRIOR SESSIONS:\n{recall_context}\nAVAILABLE TOOLS: shell_exec, browser_navigate, browser_act, browser_extract,
 http_request, file_read, file_write, file_list, web_search, sandbox_exec, sys_info, pkg_install.
 Return ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.
 Limit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
@@ -99,6 +117,7 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
             return {"session": self.session, "goal": goal, "status": "rejected", "error": "goal must be between 1 and 4000 characters"}
         if session_id:
             self.session = session_id
+        self.trajectory.record(self.session, "run_started", {"goal": goal, "user_id": user_id})
         try:
             context = global_memory.get_context(user_id)
             global_memory.remember_user(user_id)
@@ -108,14 +127,17 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
         if saved and saved.get("goal") == goal and saved.get("status") != "completed":
             steps, results = saved.get("steps", [])[:self.policy.max_steps], saved.get("results", [])
         else:
-            steps, results = await self._plan_steps(goal, context), []
+            steps, results = await self._plan_steps(goal, context)
+            self.trajectory.record(self.session, "plan_created", {"steps": steps})
         if not steps:
+            self.trajectory.record(self.session, "run_failed", {"reason": "invalid_plan"})
             return {"session": self.session, "goal": goal, "steps_planned": 0, "steps_executed": 0,
                     "successful": 0, "failed": 1, "elapsed_seconds": int(time.time() - start_time),
                     "results": [{"error": "The model did not return a valid tool plan."}]}
         self._persist(goal, user_id, steps, results)
         for index in range(len(results), len(steps)):
             step = steps[index]
+            self.trajectory.record(self.session, "step_started", {"index": index, "step": step})
             result = await self._execute_step(step)
             retries = 0
             while not result.get("success") and step.get("retry", True) and retries < self.policy.max_retries:
@@ -125,6 +147,7 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
                     retry["retried"] = retries
                     result = retry
             results.append(result)
+            self.trajectory.record(self.session, "step_finished", {"index": index, "success": result.get("success"), "result": result.get("result")})
             self._persist(goal, user_id, steps, results)
             if not result.get("success") and step.get("critical"):
                 break
@@ -132,6 +155,9 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
         success_count = sum(1 for r in results if r.get("success"))
         status = "completed" if len(results) == len(steps) and success_count == len(steps) else "partial"
         self._persist(goal, user_id, steps, results, status)
+        for skill in self.skills.relevant(goal, limit=5):
+            self.skills.evaluate(skill.name, success_count / max(len(results), 1), success=status == "completed")
+        self.trajectory.record(self.session, "run_finished", {"status": status, "successful": success_count, "failed": len(results) - success_count})
         try:
             global_memory.remember_scan(user_id, goal[:50], "general_task", len(results), success_count / max(len(results), 1) * 100)
         except Exception:
