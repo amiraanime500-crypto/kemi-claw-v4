@@ -11,6 +11,7 @@ _SECRET_PATTERNS = [
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
 ]
+_SENSITIVE_KEYS = re.compile(r"(?i)^(api[_-]?key|token|secret|password|authorization|access[_-]?token|refresh[_-]?token)$")
 
 @dataclass(frozen=True)
 class ExecutionPolicy:
@@ -47,7 +48,10 @@ class ExecutionPolicy:
 
 def redact_secrets(value: Any) -> Any:
     if isinstance(value, dict):
-        return {str(k): redact_secrets(v) for k, v in value.items()}
+        return {
+            str(k): "[REDACTED]" if _SENSITIVE_KEYS.match(str(k)) else redact_secrets(v)
+            for k, v in value.items()
+        }
     if isinstance(value, list):
         return [redact_secrets(v) for v in value]
     if not isinstance(value, str):
