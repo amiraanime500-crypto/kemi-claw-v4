@@ -1,4 +1,4 @@
-"""Persistent skill registry with evidence-based scoring and promotion."""
+"""Persistent skill registry with evidence-based scoring and retrieval."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -50,21 +50,34 @@ class SkillManager:
             skill.score = 0.7 * skill.success_rate + 0.3 * skill.score
         self._save()
 
+    def relevant(self, query: str, limit: int = 5) -> list[Skill]:
+        """Retrieve skills by bounded lexical relevance plus learned quality."""
+        terms = {t.lower() for t in re.findall(r"[A-Za-z0-9_\u0600-\u06ff-]{3,}", query or "")}
+        ranked = []
+        for skill in self.skills.values():
+            text = f"{skill.name} {skill.description} {' '.join(map(str, skill.metadata.values()))}".lower()
+            overlap = sum(1 for term in terms if term in text)
+            relevance = overlap / max(len(terms), 1)
+            learned = 0.35 * skill.success_rate + 0.15 * skill.score
+            if overlap or learned > 0:
+                ranked.append((relevance + learned, skill))
+        ranked.sort(key=lambda pair: (pair[0], pair[1].success_rate, pair[1].attempts), reverse=True)
+        return [skill for _, skill in ranked[:max(1, min(limit, 10))]]
+
     def best(self, limit: int = 10) -> list[Skill]:
         return sorted(self.skills.values(), key=lambda s: (s.score, s.success_rate, s.attempts), reverse=True)[:max(1, limit)]
 
     def manifest(self):
-        return [
-            {**skill.__dict__, "success_rate": skill.success_rate}
-            for skill in self.best(len(self.skills) or 1)
-        ]
+        return [{**skill.__dict__, "success_rate": skill.success_rate} for skill in self.best(len(self.skills) or 1)]
 
     def _save(self):
         if not self.state_path:
             return
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {name: skill.__dict__ for name, skill in self.skills.items()}
-        self.state_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(self.state_path)
 
     def _load(self):
         if not self.state_path or not self.state_path.is_file():
