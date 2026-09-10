@@ -32,6 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
 browser = ["playwright"]
+computer = ["pyautogui", "pygetwindow; platform_system == 'Windows'", "pyperclip"]
 
 [project.scripts]
 kemi-claw = "kemi_claw.client:cli"
