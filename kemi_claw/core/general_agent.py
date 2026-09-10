@@ -53,7 +53,7 @@ class GeneralAgent:
             ) or "- none"
         except Exception:
             recall_context = "- unavailable"
-        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nRELEVANT PROVEN SKILLS:\n{skill_context}\nRELATED PRIOR SESSIONS:\n{recall_context}\nAVAILABLE TOOLS: shell_exec, shell_script, browser_navigate, browser_act, browser_extract, http_request, file_read, file_write, file_list, file_delete, web_search, sandbox_exec, sys_info, sys_env, proc_list, proc_kill, net_interfaces, net_connections, net_dns_lookup, pkg_install, pkg_list, screen_capture, screen_size, mouse_move, mouse_click, mouse_drag, mouse_scroll, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, window_action.\nReturn ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.\nLimit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
+        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nRELEVANT PROVEN SKILLS:\n{skill_context}\nRELATED PRIOR SESSIONS:\n{recall_context}\nAVAILABLE TOOLS: shell_exec, shell_script, browser_navigate, browser_act, browser_extract, http_request, file_read, file_write, file_list, file_delete, web_search, sandbox_exec, sys_info, sys_env, proc_list, proc_kill, net_interfaces, net_connections, net_dns_lookup, pkg_install, pkg_list, screen_capture, screen_size, mouse_position, mouse_move, mouse_click, mouse_drag, mouse_scroll, clipboard_set, clipboard_get, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, list_windows, window_action.\nReturn ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.\nLimit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
         response = await self._call_llm([{"role": "user", "content": prompt}])
         try:
             import re
@@ -78,7 +78,7 @@ class GeneralAgent:
             from kemi_claw.tools.sandbox_exec import sandbox_exec
             from kemi_claw.tools.browser_agent import browser_probe
             from kemi_claw.tools.http_client import http_request
-            from kemi_claw.tools.computer_control import screen_capture, screen_size, mouse_move, mouse_click, mouse_drag, mouse_scroll, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, window_action
+            from kemi_claw.tools.computer_control import screen_capture, screen_size, mouse_position, mouse_move, mouse_click, mouse_drag, mouse_scroll, clipboard_set, clipboard_get, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, list_windows, window_action
             tool_map = {
                 "shell_exec": lambda: shell_exec(args.get("command", ""), args.get("timeout_sec", 30)),
                 "shell_script": lambda: shell_script(args.get("script", ""), args.get("timeout_sec", 60)),
@@ -97,15 +97,19 @@ class GeneralAgent:
                 "net_interfaces": lambda: net_interfaces(), "net_connections": lambda: net_connections(),
                 "net_dns_lookup": lambda: net_dns_lookup(args.get("hostname", "")), "pkg_install": lambda: pkg_install(args.get("package", "")), "pkg_list": lambda: pkg_list(),
                 "screen_capture": lambda: screen_capture(args.get("path")), "screen_size": lambda: screen_size(),
+                "mouse_position": lambda: mouse_position(),
                 "mouse_move": lambda: mouse_move(int(args.get("x", 0)), int(args.get("y", 0)), float(args.get("duration", 0.15))),
                 "mouse_click": lambda: mouse_click(args.get("x"), args.get("y"), args.get("button", "left"), int(args.get("clicks", 1))),
                 "mouse_drag": lambda: mouse_drag(int(args.get("x", 0)), int(args.get("y", 0)), float(args.get("duration", 0.3)), args.get("button", "left")),
                 "mouse_scroll": lambda: mouse_scroll(int(args.get("clicks", 0)), args.get("x"), args.get("y")),
+                "clipboard_set": lambda: clipboard_set(args.get("text", "")),
+                "clipboard_get": lambda: clipboard_get(),
                 "keyboard_type": lambda: keyboard_type(args.get("text", ""), float(args.get("interval", 0.01))),
                 "keyboard_press": lambda: keyboard_press(args.get("key", "enter")),
                 "keyboard_hotkey": lambda: keyboard_hotkey(args.get("keys", [])),
                 "launch_app": lambda: launch_app(args.get("command", ""), args.get("args", [])),
-                "active_window": lambda: active_window(), "window_action": lambda: window_action(args.get("action", "focus"), args.get("title", "")),
+                "active_window": lambda: active_window(), "list_windows": lambda: list_windows(),
+                "window_action": lambda: window_action(args.get("action", "focus"), args.get("title", "")),
             }
             if tool not in tool_map:
                 return {"step": step, "result": {"error": f"Unknown tool: {tool}"}, "success": False}
