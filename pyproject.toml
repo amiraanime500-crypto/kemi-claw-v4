@@ -27,12 +27,14 @@ dependencies = [
     "python-whois",
     "flower",
     "mcp==1.26.0",
+    "pyautogui",
+    "pyperclip",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
 browser = ["playwright"]
-computer = ["pyautogui", "pygetwindow; platform_system == 'Windows'", "pyperclip"]
+computer = ["pygetwindow; platform_system == 'Windows'"]
 
 [project.scripts]
 kemi-claw = "kemi_claw.client:cli"
