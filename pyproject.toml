@@ -10,25 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "httpx",
-    "pydantic",
-    "celery",
-    "redis",
-    "jinja2",
-    "pyjwt",
-    "bcrypt>=4",
-    "python-multipart",
-    "aiohttp",
-    "apscheduler",
-    "ddgs",
-    "dnspython",
-    "python-whois",
-    "flower",
-    "mcp==1.26.0",
-    "pyautogui",
-    "pyperclip",
+    "fastapi", "uvicorn", "httpx", "pydantic", "celery", "redis", "jinja2", "pyjwt", "bcrypt>=4",
+    "python-multipart", "aiohttp", "apscheduler", "ddgs", "dnspython", "python-whois", "flower",
+    "mcp==1.26.0", "pyautogui", "pyperclip", "pytesseract", "Pillow",
 ]
 
 [project.optional-dependencies]
