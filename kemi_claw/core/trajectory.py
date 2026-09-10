@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -44,7 +46,18 @@ class TrajectoryRecorder:
     def _compact(self, path: Path) -> None:
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
-            if len(lines) > self.max_events:
-                path.write_text("\n".join(lines[-self.max_events:]) + "\n", encoding="utf-8")
+            if len(lines) <= self.max_events:
+                return
+            kept = "\n".join(lines[-self.max_events:]) + "\n"
+            fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    fh.write(kept)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                os.replace(temp_name, path)
+            finally:
+                if os.path.exists(temp_name):
+                    os.unlink(temp_name)
         except OSError:
             pass
