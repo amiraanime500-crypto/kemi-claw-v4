@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 import time
+from pathlib import Path
 
+from .checkpoints import CheckpointStore
 from .delegation import run_parallel
 from .guardrails import ExecutionPolicy, bound_text, redact_secrets
 from .planner import _extract_json, _validate_plan
@@ -36,6 +39,16 @@ def run_benchmark() -> dict:
         return await run_parallel([1, 2, 3], worker, max_concurrency=2) == [2, 4, 6]
 
     check("bounded_parallel_delegation", lambda: asyncio.run(delegation_check()))
+
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        source = root / "important.txt"
+        source.write_text("before", encoding="utf-8")
+        store = CheckpointStore(root=str(root / "checkpoints"))
+        manifest = store.create([str(source)], "pre-change")
+        source.write_text("after", encoding="utf-8")
+        restored = store.restore(manifest["id"])
+        check("checkpoint_restore", lambda: restored["restored"] == [str(source)] and source.read_text(encoding="utf-8") == "before")
 
     recorder = TrajectoryRecorder(root=".kemi/benchmark-trajectories", max_events=10)
     sid = "benchmark"
