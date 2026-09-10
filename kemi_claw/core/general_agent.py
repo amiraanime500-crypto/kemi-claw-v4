@@ -1,4 +1,4 @@
-"""General autonomous agent with bounded execution, recovery and durable sessions."""
+"""General autonomous agent with bounded execution, recovery, durable sessions and desktop actions."""
 import json, uuid, time
 from ..models.llm_provider import LLMProvider
 from ..models.multi_model import get_current
@@ -8,14 +8,14 @@ from ..core.guardrails import ExecutionPolicy, bound_text, redact_secrets
 from ..core.trajectory import TrajectoryRecorder
 from ..skills.manager import SkillManager
 
-GENERAL_SYSTEM_PROMPT = """You are Kemi, a general-purpose autonomous AI agent with environment control.
+GENERAL_SYSTEM_PROMPT = """You are Kemi, a general-purpose autonomous AI agent with environment and desktop control.
 Break goals into concrete executable steps. Prefer reversible actions, verify important results,
 and return valid JSON plans. Never claim success without evidence. If a step fails, diagnose it,
-adapt the plan, and preserve useful progress. Reuse relevant proven skills when available."""
+adapt the plan, and preserve useful progress. Use only the available tools."""
 
 
 class GeneralAgent:
-    """Durable agent loop with bounded planning, recall, skills and recovery."""
+    """Durable agent loop with bounded planning, recall, skills, recovery and desktop actions."""
     def __init__(self, provider=None, model=None, session_id=None):
         cfg = get_current()
         self.llm = LLMProvider(provider or cfg["provider"], model or cfg["model"])
@@ -34,6 +34,7 @@ class GeneralAgent:
         import kemi_claw.tools.web_search
         import kemi_claw.tools.browser_agent
         import kemi_claw.tools.http_client
+        import kemi_claw.tools.computer_control
 
     async def _call_llm(self, messages, max_tok=2048):
         return await self.llm.complete(GENERAL_SYSTEM_PROMPT, messages)
@@ -52,10 +53,7 @@ class GeneralAgent:
             ) or "- none"
         except Exception:
             recall_context = "- unavailable"
-        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nRELEVANT PROVEN SKILLS:\n{skill_context}\nRELATED PRIOR SESSIONS:\n{recall_context}\nAVAILABLE TOOLS: shell_exec, browser_navigate, browser_act, browser_extract,
-http_request, file_read, file_write, file_list, web_search, sandbox_exec, sys_info, pkg_install.
-Return ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.
-Limit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
+        prompt = f"""GOAL: {goal}\nCONTEXT: {context}\nRELEVANT PROVEN SKILLS:\n{skill_context}\nRELATED PRIOR SESSIONS:\n{recall_context}\nAVAILABLE TOOLS: shell_exec, shell_script, browser_navigate, browser_act, browser_extract, http_request, file_read, file_write, file_list, file_delete, web_search, sandbox_exec, sys_info, sys_env, proc_list, proc_kill, net_interfaces, net_connections, net_dns_lookup, pkg_install, pkg_list, screen_capture, screen_size, mouse_move, mouse_click, mouse_drag, mouse_scroll, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, window_action.\nReturn ONLY a valid JSON array. Each item contains step, action, tool, args, optional retry and critical flags.\nLimit the plan to {self.policy.max_steps} steps. Keep actions focused and independently verifiable."""
         response = await self._call_llm([{"role": "user", "content": prompt}])
         try:
             import re
@@ -75,13 +73,15 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
             return {"step": step, "result": {"error": reason}, "success": False, "blocked": True}
         self._import_tools()
         try:
-            from kemi_claw.tools.env_control import shell_exec, file_read, file_write, file_list, file_delete, pkg_install, sys_info
+            from kemi_claw.tools.env_control import shell_exec, shell_script, file_read, file_write, file_list, file_delete, pkg_install, pkg_list, sys_info, sys_env, proc_list, proc_kill, net_interfaces, net_connections, net_dns_lookup
             from kemi_claw.tools.web_search import web_search
             from kemi_claw.tools.sandbox_exec import sandbox_exec
             from kemi_claw.tools.browser_agent import browser_probe
             from kemi_claw.tools.http_client import http_request
+            from kemi_claw.tools.computer_control import screen_capture, screen_size, mouse_move, mouse_click, mouse_drag, mouse_scroll, keyboard_type, keyboard_press, keyboard_hotkey, launch_app, active_window, window_action
             tool_map = {
                 "shell_exec": lambda: shell_exec(args.get("command", ""), args.get("timeout_sec", 30)),
+                "shell_script": lambda: shell_script(args.get("script", ""), args.get("timeout_sec", 60)),
                 "file_read": lambda: file_read(args.get("path", ""), args.get("max_lines", 100)),
                 "file_write": lambda: file_write(args.get("path", ""), args.get("content", "")),
                 "file_list": lambda: file_list(args.get("directory", "."), args.get("pattern", "*")),
@@ -90,9 +90,22 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
                 "sandbox_exec": lambda: sandbox_exec(args.get("code", ""), args.get("language", "python")),
                 "browser_navigate": lambda: browser_probe(args.get("url", ""), "get_forms"),
                 "browser_act": lambda: browser_probe(args.get("url", ""), "click:" + args.get("selector", "")),
+                "browser_extract": lambda: browser_probe(args.get("url", ""), "extract"),
                 "http_request": lambda: http_request(args.get("url", ""), args.get("method", "GET"), args.get("headers", {}), args.get("body", "")),
-                "sys_info": lambda: sys_info(),
-                "pkg_install": lambda: pkg_install(args.get("package", "")),
+                "sys_info": lambda: sys_info(), "sys_env": lambda: sys_env(),
+                "proc_list": lambda: proc_list(args.get("filter_name", "")), "proc_kill": lambda: proc_kill(int(args.get("pid", 0))),
+                "net_interfaces": lambda: net_interfaces(), "net_connections": lambda: net_connections(),
+                "net_dns_lookup": lambda: net_dns_lookup(args.get("hostname", "")), "pkg_install": lambda: pkg_install(args.get("package", "")), "pkg_list": lambda: pkg_list(),
+                "screen_capture": lambda: screen_capture(args.get("path")), "screen_size": lambda: screen_size(),
+                "mouse_move": lambda: mouse_move(int(args.get("x", 0)), int(args.get("y", 0)), float(args.get("duration", 0.15))),
+                "mouse_click": lambda: mouse_click(args.get("x"), args.get("y"), args.get("button", "left"), int(args.get("clicks", 1))),
+                "mouse_drag": lambda: mouse_drag(int(args.get("x", 0)), int(args.get("y", 0)), float(args.get("duration", 0.3)), args.get("button", "left")),
+                "mouse_scroll": lambda: mouse_scroll(int(args.get("clicks", 0)), args.get("x"), args.get("y")),
+                "keyboard_type": lambda: keyboard_type(args.get("text", ""), float(args.get("interval", 0.01))),
+                "keyboard_press": lambda: keyboard_press(args.get("key", "enter")),
+                "keyboard_hotkey": lambda: keyboard_hotkey(args.get("keys", [])),
+                "launch_app": lambda: launch_app(args.get("command", ""), args.get("args", [])),
+                "active_window": lambda: active_window(), "window_action": lambda: window_action(args.get("action", "focus"), args.get("title", "")),
             }
             if tool not in tool_map:
                 return {"step": step, "result": {"error": f"Unknown tool: {tool}"}, "success": False}
@@ -105,11 +118,7 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
 
     def _persist(self, goal, user_id, steps, results, status="running"):
         safe_results = bound_text(redact_secrets(results), self.policy.max_tool_output)
-        session_store.save(self.session, {
-            "session": self.session, "user_id": user_id, "goal": goal,
-            "steps": steps, "results": safe_results, "history": self.history[-50:],
-            "status": status,
-        })
+        session_store.save(self.session, {"session": self.session, "user_id": user_id, "goal": goal, "steps": steps, "results": safe_results, "history": self.history[-50:], "status": status})
 
     async def run(self, goal: str, user_id: str = "default", session_id=None, resume=True) -> dict:
         start_time = time.time()
@@ -131,9 +140,7 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
             self.trajectory.record(self.session, "plan_created", {"steps": steps})
         if not steps:
             self.trajectory.record(self.session, "run_failed", {"reason": "invalid_plan"})
-            return {"session": self.session, "goal": goal, "steps_planned": 0, "steps_executed": 0,
-                    "successful": 0, "failed": 1, "elapsed_seconds": int(time.time() - start_time),
-                    "results": [{"error": "The model did not return a valid tool plan."}]}
+            return {"session": self.session, "goal": goal, "steps_planned": 0, "steps_executed": 0, "successful": 0, "failed": 1, "elapsed_seconds": int(time.time() - start_time), "results": [{"error": "The model did not return a valid tool plan."}]}
         self._persist(goal, user_id, steps, results)
         for index in range(len(results), len(steps)):
             step = steps[index]
@@ -162,7 +169,4 @@ Limit the plan to {self.policy.max_steps} steps. Keep actions focused and indepe
             global_memory.remember_scan(user_id, goal[:50], "general_task", len(results), success_count / max(len(results), 1) * 100)
         except Exception:
             pass
-        return {"session": self.session, "goal": goal, "steps_planned": len(steps),
-                "steps_executed": len(results), "successful": success_count,
-                "failed": len(results) - success_count, "elapsed_seconds": int(elapsed),
-                "status": status, "results": results}
+        return {"session": self.session, "goal": goal, "steps_planned": len(steps), "steps_executed": len(results), "successful": success_count, "failed": len(results) - success_count, "elapsed_seconds": int(elapsed), "status": status, "results": results}
