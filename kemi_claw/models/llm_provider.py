@@ -21,6 +21,10 @@ class LLMProvider:
         for provider in providers:
             try:
                 return await self._complete_once(provider, system, messages)
+            except ValueError as exc:
+                if str(exc).startswith("Unknown provider:"):
+                    raise
+                errors.append(f"{provider}: {exc}")
             except Exception as exc:
                 errors.append(f"{provider}: {exc}")
         raise RuntimeError("all configured LLM providers failed: " + " | ".join(errors))
