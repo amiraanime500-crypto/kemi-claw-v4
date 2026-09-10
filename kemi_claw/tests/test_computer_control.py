@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, patch
 
 
 def test_keyboard_type_uses_clipboard_for_unicode():
@@ -8,21 +8,19 @@ def test_keyboard_type_uses_clipboard_for_unicode():
 
     fake_pyautogui = SimpleNamespace(
         PAUSE=0,
-        write=AsyncMock(),
-        hotkey=AsyncMock(),
+        write=Mock(),
+        hotkey=Mock(),
     )
-    fake_clipboard = SimpleNamespace(copy=AsyncMock())
+    fake_clipboard = SimpleNamespace(copy=Mock())
 
-    async def run():
-        with patch.object(cc, "_pyautogui", return_value=fake_pyautogui), patch.dict("sys.modules", {"pyperclip": fake_clipboard}):
-            return await cc.keyboard_type("مرحبا", 0)
+    with patch.object(cc, "_pyautogui", return_value=fake_pyautogui), patch.dict("sys.modules", {"pyperclip": fake_clipboard}):
+        result = asyncio.run(cc.keyboard_type("مرحبا", 0))
 
-    result = asyncio.run(run())
     assert result["ok"] is True
     assert result["mode"] == "clipboard-paste"
-    fake_clipboard.copy.assert_awaited_once_with("مرحبا")
-    fake_pyautogui.hotkey.assert_awaited_once()
-    fake_pyautogui.write.assert_not_awaited()
+    fake_clipboard.copy.assert_called_once_with("مرحبا")
+    fake_pyautogui.hotkey.assert_called_once()
+    fake_pyautogui.write.assert_not_called()
 
 
 def test_mouse_click_rejects_invalid_button():
@@ -45,7 +43,7 @@ def test_linux_window_action_builds_correct_wmctrl_command():
         assert args == ("wmctrl", "-r", "Terminal", "-b", "add,maximized_vert,maximized_horz")
         return FakeProc()
 
-    with patch.object(cc.platform, "system", return_value="Linux"), patch.object(cc.shutil, "which", return_value="/usr/bin/wmctrl"), patch.object(cc.asyncio, "create_subprocess_exec", new=AsyncMock(side_effect=fake_create)):
+    with patch.object(cc.platform, "system", return_value="Linux"), patch.object(cc.shutil, "which", return_value="/usr/bin/wmctrl"), patch.object(cc.asyncio, "create_subprocess_exec", side_effect=fake_create):
         result = asyncio.run(cc.window_action("maximize", "Terminal"))
 
     assert result["ok"] is True
